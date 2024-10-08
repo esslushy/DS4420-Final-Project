@@ -10,7 +10,7 @@ class World():
 
         self.entities = entities
 
-    def step(self):
+    def step(self, step: int):
         # Update positions by entity position + small_step * velocity.
         # Don't allow position update that will lead to collision for our entities
 
@@ -18,7 +18,9 @@ class World():
 
         # Compute Collisions
 
-        # Run update velocity for each entity absed on collisions, cu
+        # Run update velocity for each entity based on collisions, cu
         for e in self.entities:
             e.update(collision[e]) #
+        # update robot with goal, colision, and step num
+        self.robot.update(self.goal, collision[self.robot], step)
         pass
