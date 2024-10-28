@@ -9,6 +9,7 @@ from pathlib import Path
 import torch
 from ProjectParameters import MAX_ANGLE_CHANGE, MAX_SPEED_CHANGE, GAMMA
 import numpy as np
+from tqdm import tqdm
 
 def load_module(module_name, module_path):
     spec = importlib.util.spec_from_file_location(module_name, module_path)
@@ -17,9 +18,9 @@ def load_module(module_name, module_path):
     spec.loader.exec_module(foo)
     return foo
 
-def main(world: Path, config: dict, output_dir: Path):
+def main(world_pth: Path, config: dict, output_dir: Path):
     # Get world
-    world: World = load_module("custom_env", world).world
+    world: World = load_module("custom_env", world_pth).world
     # Intialize actor and critic networks
     if config["model"] == "EMPNN":
         actor = EMPNNModel(outputs=[2, 2])
@@ -40,10 +41,11 @@ def main(world: Path, config: dict, output_dir: Path):
     # Repeat for however many episodes
     rewards = []
     losses = []
-    for episode in config["num_episodes"]:
+    successful_episodes = []
+    for episode in tqdm(range(config["num_episodes"]), "Episode"):
         episode_rewards = list()
         episode_loss = list()
-        for step in config["max_steps"]:
+        for step in tqdm(range(config["max_steps"]), "Step"):
             actor_optim.zero_grad()
             critic_optim.zero_grad()
             # Update world
@@ -52,13 +54,15 @@ def main(world: Path, config: dict, output_dir: Path):
             curr_state = world.compute_graph()
             # Sample change to robot
             pred_means, pred_deviations = actor(curr_state)
+            pred_means = torch.nn.functional.tanh(pred_means)[0] * MAX_SPEED_CHANGE
+            pred_deviations = torch.nn.functional.relu(pred_deviations)[0]
             speed_change, angle_change = torch.normal(pred_means, pred_deviations)
             speed_change = torch.clip(speed_change, -MAX_SPEED_CHANGE, MAX_SPEED_CHANGE)
             angle_change = torch.clip(angle_change, -MAX_ANGLE_CHANGE, MAX_ANGLE_CHANGE)
             # Apply change to robot
-            world.robot.update_velocity(speed_change, angle_change)
+            world.robot.update_velocity(speed_change.item(), angle_change.item())
             # Update robot position
-            world.robot.update_position()
+            world.robot.update_position(world.width, world.height)
             # Update rest of entities to next state, compute collisions
             world.update_entities_velocity()
             world.compute_collisions()
@@ -75,34 +79,37 @@ def main(world: Path, config: dict, output_dir: Path):
             else:
                 advantage = reward + (GAMMA * pred_reward_ns) - pred_reward_cs
                 critic_target = reward + (GAMMA * pred_reward_ns)
-            actor_loss = torch.mean(-advantage * torch.log(pred_deviations))
+            actor_loss = torch.mean(-advantage * torch.log(pred_deviations + 1e-8))
             critic_loss = torch.nn.functional.mse_loss(pred_reward_cs, critic_target)
             # Update parameters
-            actor_loss.backward()
+            actor_loss.backward(retain_graph=True)
             critic_loss.backward()
             actor_optim.step()
             critic_optim.step()
             # Save reward and loss
             episode_rewards.append(reward)
             episode_loss.append(actor_loss.item() + critic_loss.item())
+            if world.robot_reached_goal():
+                successful_episodes.append(episode)
+                break
         # Reset world at end of episode
         world.reset()
         rewards.append(np.mean(episode_rewards))
         losses.append(np.mean(episode_loss))
     # Save results
     output_dir.mkdir(exist_ok=True)
-    config["training_world"] = world
+    config["training_world"] = str(world_pth)
     with output_dir.joinpath("config.json").open("wt+") as f:
-        json.dump(config, f)
+        json.dump(config, f, indent=2)
     with output_dir.joinpath("results.json").open("wt+") as f:
         json.dump({
             "training_loss": losses,
-            "training_reward": rewards
-        }, f)
+            "training_reward": rewards,
+            "successful_episodes": successful_episodes
+        }, f, indent=2)
     # Save models
     torch.save(actor.state_dict(), output_dir.joinpath("actor.model"))
     torch.save(critic.state_dict(), output_dir.joinpath("critic.model"))
-
     
 if __name__ == "__main__":
     args = ArgumentParser()

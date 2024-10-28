@@ -17,9 +17,7 @@ class GCNNModel(nn.Module):
         self.edge_embedding = nn.Linear(2, edge_dim)
 
         self.conv_layers = nn.ModuleList([CGConv(node_dim, edge_dim, batch_norm=True) for _ in range(num_conv_layers)])
-        self.scatter_batch_norm = nn.BatchNorm1d(node_dim)
         self.fc = nn.Linear(node_dim, h_dim)
-        self.fc_batch_norm = nn.BatchNorm1d(h_dim)
         self.softplus = nn.Softplus()
 
         self.outputs = []
@@ -28,7 +26,6 @@ class GCNNModel(nn.Module):
             linear_layers = list()
             for _ in range(num_fully_connected_layers):
                 linear_layers.append(nn.Linear(h_dim, h_dim))
-                linear_layers.append(nn.BatchNorm1d(h_dim))
                 linear_layers.append(nn.Softplus())
             self.outputs.append(nn.Sequential(*linear_layers, nn.Linear(h_dim, output_shape)))
 
@@ -43,11 +40,9 @@ class GCNNModel(nn.Module):
             x = layer(x, data.edge_index, edge_attr)
 
         # Select only the goal node
-        x = x[0]
-        x = self.scatter_batch_norm(x)
+        x = x[0].reshape(1, -1)
         x = self.softplus(x)
         x = self.fc(x)
-        x = self.fc_batch_norm(x)
         x = self.softplus(x)
         return [output(x) for output in self.outputs]
     

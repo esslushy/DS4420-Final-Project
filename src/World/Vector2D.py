@@ -1,4 +1,4 @@
-import numpy as np
+import math
 from typing import Union
 
 class Vector2D():
@@ -17,19 +17,19 @@ class Vector2D():
         """
         Makes a Vector2D from magnitude and direction.
         """
-        return Vector2D(magnitude * np.cos(direction), magnitude * np.sin(direction))
+        return Vector2D(magnitude * math.cos(direction), magnitude * math.sin(direction))
 
     def magnitude(self):
         """
         Returns the l2 magnitude of this vector.
         """
-        return np.sqrt(self.x**2 + self.y**2)
+        return math.sqrt(self.x**2 + self.y**2)
     
     def distance(self, other: "Vector2D"):
         """
         Gives the mangitudal distance between this and another vector
         """
-        return np.sqrt((self.x-other.x)**2 + (self.y-other.y)**2)
+        return math.sqrt((self.x-other.x)**2 + (self.y-other.y)**2)
     
     def displace(self, other: "Vector2D"):
         """
@@ -62,4 +62,5 @@ class Vector2D():
         if type(other) == int or type(other) == float:
             return Vector2D(self.x / other, self.y / other)
         else:
+            print(type(other))
             raise TypeError("Can't do division on a non-number")

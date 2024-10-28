@@ -41,8 +41,9 @@ class World():
     def compute_reward(self, step: int):
         """
         Computes the reward for the robot at the current time step
-        """
-        return - self.robot.position.distance(self.goal) - step - self.robot.num_collisions
+        """    
+        return - self.robot.position.distance(self.goal.position) - step \
+            - self.robot.num_collisions + (100 if self.robot_reached_goal() else 0)
     
     def compute_graph(self) -> Data:
         """
@@ -75,8 +76,8 @@ class World():
         
         # Edge values are displacements
         displacements = [
-            self.robot.position.displace(self.goal.position),
-            *[e.position.displace(self.robot.position) for e in self.entities],
+            self.robot.position.displace(self.goal.position).as_array(),
+            *[e.position.displace(self.robot.position).as_array() for e in self.entities],
             # Left Wall
             [self.robot.position.x, 0],
             # Top Wall
