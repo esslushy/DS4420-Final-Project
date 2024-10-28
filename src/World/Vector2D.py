@@ -57,3 +57,9 @@ class Vector2D():
             return Vector2D(self.x * other, self.y * other)
         else:
             raise TypeError("Can't do multiplication on a non-number")
+        
+    def __truediv__(self, other: Union[int, float]):
+        if type(other) == int or type(other) == float:
+            return Vector2D(self.x / other, self.y / other)
+        else:
+            raise TypeError("Can't do division on a non-number")

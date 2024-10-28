@@ -14,25 +14,20 @@ class World():
         self.entities = entities
         self.robot = robot
 
-    def step(self, step: int):
-        # Update positions by entity position + small_step * velocity.
-        # Don't allow position update that will lead to collision for our entities
+    def update_entities_position(self):
         for entity in self.entities:
             entity.update_position()
-        # Let robot update its velocity
-        self.robot.update_velocity(self.compute_graph())
-        self.robot.update_position()
+
+    def compute_collisions(self):
         # Compute Collisions
         for e in self.entities:
             if self.robot.collided_with(e):
                 self.robot.num_collisions += 1
+    
+    def update_entities_velocity(self):
         # Run update velocity for each entity based on collisions
         for e in self.entities:
-            e.update_velocity(any([e.collided_with(e_p) for e_p in self.entities])) #
-        # Observe reward and next state, update robot graphs
-        reward = self.compute_reward(step)
-        next_state = self.compute_graph()
-        pass
+            e.update_velocity(any([e.collided_with(e_p) for e_p in self.entities + [self.robot]]))
 
     def compute_reward(self, step: int):
         """
@@ -85,3 +80,6 @@ class World():
         for e in self.entities:
             e.reset()
         self.robot.reset()
+
+    def robot_reached_goal(self) -> bool:
+        return self.robot.collided_with(self.goal)
