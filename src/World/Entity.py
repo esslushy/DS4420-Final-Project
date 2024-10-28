@@ -13,13 +13,18 @@ class Entity(ABC):
         self.initial_position = Vector2D(position.x, position.y)
         self.initial_velocity = Vector2D(velocity.x, velocity.y)
 
-    def update_position(self):
+    def update_position(self, world_width: float, world_height: float):
         """
         Updates position based on velocity
         """
         self.position += self.velocity * STEP_SIZE
+        # Bind to world size
+        self.position = Vector2D(
+            max(min(0, self.position.x), world_width),
+            max(min(0, self.position.y), world_height)
+        )
 
-    def update_velocity(self):
+    def update_velocity(self, world_width: float, world_height: float):
         """
         Updates velocity
         """

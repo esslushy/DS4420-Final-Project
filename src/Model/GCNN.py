@@ -1,5 +1,6 @@
 from torch_geometric.nn.conv import CGConv
 import torch.nn as nn
+import torch
 
 class GCNNModel(nn.Module):
     """
@@ -12,7 +13,7 @@ class GCNNModel(nn.Module):
         self.num_layers = num_conv_layers
         self.h_dim = h_dim
 
-        self.node_embedding = nn.Linear(2, node_dim)
+        self.node_embedding = nn.Linear(3, node_dim)
         self.edge_embedding = nn.Linear(2, edge_dim)
 
         self.conv_layers = nn.ModuleList([CGConv(node_dim, edge_dim, batch_norm=True) for _ in range(num_conv_layers)])
@@ -34,11 +35,12 @@ class GCNNModel(nn.Module):
         self.outputs = nn.ModuleList(self.outputs)
 
     def forward(self, data):
-        node_attr = self.node_embedding(data.node_attr)
+        x = torch.hstack([data.x.reshape(-1, 1), data.node_attr])
+        x = self.node_embedding(x)
         edge_attr = self.edge_embedding(data.edge_attr)
 
         for layer in self.conv_layers:
-            x = layer(node_attr, data.edge_index, edge_attr)
+            x = layer(x, data.edge_index, edge_attr)
 
         # Select only the goal node
         x = x[0]

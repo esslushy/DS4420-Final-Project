@@ -16,18 +16,27 @@ class World():
 
     def update_entities_position(self):
         for entity in self.entities:
-            entity.update_position()
+            entity.update_position(self.width, self.height)
 
     def compute_collisions(self):
-        # Compute Collisions
+        """
+        Cound how many entities the robot has collided with.
+        Includes walls
+        """
         for e in self.entities:
             if self.robot.collided_with(e):
                 self.robot.num_collisions += 1
+        # Check if hitting wall
+        if (self.robot.position.x <= self.robot.radius or \
+            self.robot.position.y <= self.robot.radius or \
+            self.robot.position.x >= self.width - self.robot.radius or \
+            self.robot.position.y >= self.height - self.robot.radius):
+            self.robot.num_collisions += 1
     
     def update_entities_velocity(self):
         # Run update velocity for each entity based on collisions
         for e in self.entities:
-            e.update_velocity(any([e.collided_with(e_p) for e_p in self.entities + [self.robot]]))
+            e.update_velocity(self.width, self.height)
 
     def compute_reward(self, step: int):
         """
@@ -49,6 +58,16 @@ class World():
             [0, 0],
             [0, 0]    
         ]
+        # Size of objects in scene
+        sizes = [
+            self.goal.radius, 
+            self.robot.radius, 
+            *[e.radius for e in self.entities],
+            0,
+            0,
+            0,
+            0    
+        ]
 
         # Edges are robot(1) to goal(0), entities and walls(2+) to robot(1)
         edge_index = [[1, *range(2, len(velocities))], 
@@ -68,6 +87,7 @@ class World():
             [0, self.robot.position.y]
         ]
         return Data(
+            x=torch.tensor(sizes, dtype=torch.float32),
             edge_index=torch.tensor(edge_index, dtype=torch.int64), 
             node_attr=torch.tensor(velocities, dtype=torch.float32), 
             edge_attr=torch.tensor(displacements, dtype=torch.float32)

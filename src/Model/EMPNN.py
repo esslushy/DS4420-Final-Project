@@ -38,7 +38,7 @@ class EMPNNModel(nn.Module):
         # Vector values of nodes
         v = data.node_attr.reshape(-1, 2, 1)
         # Scalar Values
-        s = data.node_attr.norm(-1)
+        s = data.x.reshape(-1, 1)
 
         # Expand dims
         v, s = self.embed_layer(v, s)
