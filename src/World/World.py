@@ -1,11 +1,12 @@
 from World.Vector2D import Vector2D
 from World.Entity import Entity
+from World.Robot import Robot
 from typing import List
 import torch
 from torch_geometric.data import Data
 
 class World():
-    def __init__(self, width: int, height: int, goal: Entity, robot: Entity, entities: List[Entity]) -> None:
+    def __init__(self, width: int, height: int, goal: Entity, robot: Robot, entities: List[Entity]) -> None:
         self.width = width
         self.height = height
         self.goal = goal
@@ -20,15 +21,17 @@ class World():
             entity.update_position()
         # Let robot update its velocity
         self.robot.update_velocity(self.compute_graph())
-        # robot will be updated last, allowed to collide for learning purposes
-
+        self.robot.update_position()
         # Compute Collisions
-
-        # Run update velocity for each entity based on collisions, cu
         for e in self.entities:
-            e.update_velocity(collision[e]) #
-        # update robot with goal, colision, and step num
-        self.robot.update(self.goal, collision[self.robot], step)
+            if self.robot.collided_with(e):
+                self.robot.num_collisions += 1
+        # Run update velocity for each entity based on collisions
+        for e in self.entities:
+            e.update_velocity(any([e.collided_with(e_p) for e_p in self.entities])) #
+        # Observe reward and next state, update robot graphs
+        reward = self.compute_reward(step)
+        next_state = self.compute_graph()
         pass
 
     def compute_reward(self, step: int):
@@ -74,3 +77,11 @@ class World():
             node_attr=torch.tensor(velocities, dtype=torch.float32), 
             edge_attr=torch.tensor(displacements, dtype=torch.float32)
         )
+
+    def reset(self):
+        """
+        Resets the world
+        """
+        for e in self.entities:
+            e.reset()
+        self.robot.reset()

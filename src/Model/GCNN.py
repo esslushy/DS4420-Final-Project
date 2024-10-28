@@ -1,4 +1,3 @@
-from torch_scatter import scatter
 from torch_geometric.nn.conv import CGConv
 import torch.nn as nn
 
@@ -6,7 +5,7 @@ class GCNNModel(nn.Module):
     """
     Represents a graph convolutional network
     """
-    def __init__(self, node_dim=64, edge_dim=16, num_conv_layers=3, h_dim=128, num_fully_connected_layers=6) -> None:
+    def __init__(self, outputs: list, node_dim=64, edge_dim=16, num_conv_layers=3, h_dim=128, num_fully_connected_layers=6) -> None:
         super().__init__()
         self.node_dim = node_dim
         self.edge_dim = edge_dim
@@ -24,13 +23,13 @@ class GCNNModel(nn.Module):
 
         self.outputs = []
 
-        for output_shape in [1,1]:
+        for output_shape in outputs:
             linear_layers = list()
             for _ in range(num_fully_connected_layers):
                 linear_layers.append(nn.Linear(h_dim, h_dim))
                 linear_layers.append(nn.BatchNorm1d(h_dim))
                 linear_layers.append(nn.Softplus())
-            self.outputs.append(nn.Sequential(*linear_layers, nn.Linear(h_dim, output_shape), nn.Tanh()))
+            self.outputs.append(nn.Sequential(*linear_layers, nn.Linear(h_dim, output_shape)))
 
         self.outputs = nn.ModuleList(self.outputs)
 

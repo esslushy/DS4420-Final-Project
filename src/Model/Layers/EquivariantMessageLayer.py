@@ -31,7 +31,7 @@ class EquivariantMessageLayer(nn.Module):
 
           Args:
             v: The vector values for the atoms. These are mutated by the offset vectors dir_ij and phi_ij.
-                They are in the shape [number of nodes]x3x[width of embedding or h_dim]
+                They are in the shape [number of nodes]x2x[width of embedding or h_dim]
             s: The embedded scalar values of the atoms. These are in the shape [number of nodes]x[width of embedding]
             edge_index: The 2x[number of edges] graph of the ith node to the jth node edge
             phi_ij: This is the RBF of the distances between atoms in the graph. It is in shape [number of edges]x[rbf dim]
@@ -52,7 +52,7 @@ class EquivariantMessageLayer(nn.Module):
         ds = scatter(ds, edge_index[0], dim=0, dim_size=s.shape[0], reduce="sum")
         """
         Compute the vector update. Note that dvr is expanded to [number of edges]x1x[h_dim] 
-        and dir_ij is [number of edges]x3x1, so that when multiplied they match the needed 
+        and dir_ij is [number of edges]x2x1, so that when multiplied they match the needed 
         [number of edges]x2x[h_dim] of dv
         """
         dv = dvr[:, None] * dir_ij[..., None] + (dv_v[:, None] * v[edge_index[1]])

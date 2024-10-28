@@ -4,9 +4,9 @@ from Model.CutOff import CosineCutoff
 from Model.GaussianDistance import GaussianDistance
 
 class EMPNNModel(nn.Module):
-    def __init__(self, h_dim=128, num_interation_layers=3, num_fully_connected_layers=1) -> None:
+    def __init__(self, outputs: list, relevant_radius=25.0, h_dim=128, num_interation_layers=3, num_fully_connected_layers=1) -> None:
         super().__init__()
-        self.gauss_expansion = GaussianDistance(0, 8.0, 0.2)
+        self.gauss_expansion = GaussianDistance(0, relevant_radius, 0.2)
         
         self.rbf_dim = self.gauss_expansion.filter.shape[0].item()
         self.h_dim = h_dim
@@ -17,7 +17,7 @@ class EMPNNModel(nn.Module):
         self.update_layers = []
 
         for _ in range(num_interation_layers):
-            self.message_passing_layers.append(EquivariantMessageLayer(h_dim, self.rbf_dim, CosineCutoff(25.0)))
+            self.message_passing_layers.append(EquivariantMessageLayer(h_dim, self.rbf_dim, CosineCutoff(relevant_radius)))
             self.update_layers.append(EquivariantUpdateLayer(h_dim))
 
         self.message_passing_layers = nn.ModuleList(self.message_passing_layers)
@@ -25,12 +25,12 @@ class EMPNNModel(nn.Module):
 
         self.outputs = []
 
-        for output_shape in [1,1]:
+        for output_shape in outputs:
             linear_layers = list()
             for _ in range(num_fully_connected_layers):
                 linear_layers.append(nn.Linear(h_dim, h_dim))
                 linear_layers.append(nn.SiLU())
-            self.outputs.append(nn.Sequential(*linear_layers, nn.Linear(h_dim, output_shape), nn.Tanh()))
+            self.outputs.append(nn.Sequential(*linear_layers, nn.Linear(h_dim, output_shape)))
 
         self.outputs = nn.ModuleList(self.outputs)
 
