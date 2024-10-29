@@ -39,7 +39,9 @@ def main(world_pth: Path, config: dict, output_dir: Path):
         raise ValueError(f"No optimizer of type {config['optimizer']}")
     # Repeat for however many episodes
     rewards = []
+    final_rewards = []
     losses = []
+    collisions = []
     successful_episodes = []
     for episode in tqdm(range(config["num_episodes"]), "Episode"):
         episode_rewards = list()
@@ -96,11 +98,15 @@ def main(world_pth: Path, config: dict, output_dir: Path):
         avg_episode_reward = np.mean(episode_rewards)
         avg_episode_loss = np.mean(episode_losses)
         print(f"Episode {episode+1}:")
-        print("Reward:", avg_episode_reward)
+        print("Avg. Reward:", avg_episode_reward)
         print("Loss:", avg_episode_loss)
-        world.reset()
+        print("Collisions:", world.robot.num_collisions)
+        print("Final Reward:", reward)
         rewards.append(avg_episode_reward)
+        final_rewards.append(reward)
         losses.append(avg_episode_loss)
+        collisions.append(world.robot.num_collisions)
+        world.reset()
     # Save results
     output_dir.mkdir(exist_ok=True)
     config["training_world"] = str(world_pth)
@@ -110,6 +116,8 @@ def main(world_pth: Path, config: dict, output_dir: Path):
         json.dump({
             "training_loss": losses,
             "training_reward": rewards,
+            "final_reward": final_rewards,
+            "collisions": collisions,
             "successful_episodes": successful_episodes
         }, f, indent=2)
     # Save models
