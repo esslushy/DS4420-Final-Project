@@ -3,21 +3,13 @@ import json
 from Model.EMPNN import EMPNNModel
 from Model.GCNN import GCNNModel
 from World.World import World
-import importlib
-import sys
 from pathlib import Path
 import torch
 from ProjectParameters import MAX_ANGLE_CHANGE, MAX_SPEED_CHANGE, GAMMA
 import numpy as np
 from tqdm import tqdm
 import math
-
-def load_module(module_name, module_path):
-    spec = importlib.util.spec_from_file_location(module_name, module_path)
-    foo = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = foo
-    spec.loader.exec_module(foo)
-    return foo
+from Utils import load_module
 
 def log_prob(value, mean, stdev):
     """
