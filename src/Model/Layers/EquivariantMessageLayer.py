@@ -44,18 +44,18 @@ class EquivariantMessageLayer(nn.Module):
         s_expanded = self.embed_net(s)
         # Expands rbf to [number of edges]x[3 * h_dim]. Cutoff is applied edgewise
         rbf_expanded_cutoff = self.rbf_expansion(phi_ij) * self.cutoff_fn(d_ij) 
-        # Index s by edges so it becomes [number of edges]x[3 * h_dim]. Specifically the j edge.
-        grouped_values = s_expanded[edge_index[1]] * rbf_expanded_cutoff
+        # Index s by edges so it becomes [number of edges]x[3 * h_dim]. Specifically the i edge.
+        grouped_values = s_expanded[edge_index[0]] * rbf_expanded_cutoff
         # Split it into the 3 separate change vectors. They are all [number of edges]x[h_dim]
         dv_v, ds, dvr = torch.split(grouped_values, self.h_dim, dim=-1)
         # Update scalar values. We add up all ds with those that have the some source node.
-        ds = scatter(ds, edge_index[0], dim=0, dim_size=s.shape[0], reduce="sum")
+        ds = scatter(ds, edge_index[1], dim=0, dim_size=s.shape[0], reduce="mean")
         """
         Compute the vector update. Note that dvr is expanded to [number of edges]x1x[h_dim] 
         and dir_ij is [number of edges]x2x1, so that when multiplied they match the needed 
         [number of edges]x2x[h_dim] of dv
         """
-        dv = dvr[:, None] * dir_ij[..., None] + (dv_v[:, None] * v[edge_index[1]])
-        dv = scatter(dv, edge_index[0], dim=0, dim_size=v.shape[0], reduce="sum")
+        dv = dvr[:, None] * dir_ij[..., None] + (dv_v[:, None] * v[edge_index[0]])
+        dv = scatter(dv, edge_index[1], dim=0, dim_size=v.shape[0], reduce="mean")
 
         return v + dv, s + ds

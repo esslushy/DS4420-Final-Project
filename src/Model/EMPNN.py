@@ -4,11 +4,11 @@ from Model.CutOff import CosineCutoff
 from Model.GaussianDistance import GaussianDistance
 
 class EMPNNModel(nn.Module):
-    def __init__(self, outputs: list, relevant_radius=25.0, h_dim=128, num_interation_layers=3, num_fully_connected_layers=1) -> None:
+    def __init__(self, outputs: list, relevant_radius=100.0, h_dim=128, num_interation_layers=3, num_fully_connected_layers=3) -> None:
         super().__init__()
-        self.gauss_expansion = GaussianDistance(0, relevant_radius, 0.2)
+        self.gauss_expansion = GaussianDistance(0, relevant_radius, 1)
         
-        self.rbf_dim = self.gauss_expansion.filter.shape[0].item()
+        self.rbf_dim = self.gauss_expansion.filter.shape[0]
         self.h_dim = h_dim
 
         self.embed_layer = GatedEquivariantBlock(1, 1, h_dim, h_dim, h_dim)
@@ -43,7 +43,8 @@ class EMPNNModel(nn.Module):
         # Expand dims
         v, s = self.embed_layer(v, s)
         
-        d_ij = data.edge_attr.norm(-1)
+        d_ij = data.edge_attr.norm(dim=-1, keepdim=True)
+        d_ij[d_ij == 0] = 1 # Stability
         dir_ij = data.edge_attr / d_ij
         phi_ij = self.gauss_expansion.expand(d_ij)
 
@@ -51,7 +52,7 @@ class EMPNNModel(nn.Module):
             v, s = message(v, s, data.edge_index, phi_ij, d_ij, dir_ij)
             v, s = update(v, s)
 
-        nodewise_output = [output(s) for output in self.outputs]
+        s = s[0].reshape(1, -1)
         
         # Assemble all node data batchwise in a sum
-        return [out[0] for out in nodewise_output]
+        return [output(s) for output in self.outputs]

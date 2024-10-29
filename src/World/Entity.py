@@ -20,8 +20,8 @@ class Entity(ABC):
         self.position += self.velocity * STEP_SIZE
         # Bind to world size
         self.position = Vector2D(
-            max(min(0, self.position.x), world_width),
-            max(min(0, self.position.y), world_height)
+            min(max(self.radius, self.position.x), world_width - self.radius),
+            min(max(self.radius, self.position.y), world_height - self.radius)
         )
 
     def update_velocity(self, world_width: float, world_height: float):

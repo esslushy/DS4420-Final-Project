@@ -10,6 +10,7 @@ import torch
 from ProjectParameters import MAX_ANGLE_CHANGE, MAX_SPEED_CHANGE, GAMMA
 import numpy as np
 from tqdm import tqdm
+import math
 
 def load_module(module_name, module_path):
     spec = importlib.util.spec_from_file_location(module_name, module_path)
@@ -17,6 +18,12 @@ def load_module(module_name, module_path):
     sys.modules[module_name] = foo
     spec.loader.exec_module(foo)
     return foo
+
+def log_prob(value, mean, stdev):
+    """
+    Computes the gaussian log prob
+    """
+    return -torch.log(stdev) - ((1/2)*math.log(math.pi/2)) - ((1/2)*(((value-mean)/stdev)**2))
 
 def main(world_pth: Path, config: dict, output_dir: Path):
     # Get world
@@ -31,11 +38,11 @@ def main(world_pth: Path, config: dict, output_dir: Path):
     else:
         raise ValueError(f"No model of type {config['model']}")
     if config["optimizer"] == "SGD":
-        actor_optim = torch.optim.SGD(actor.parameters(), lr=config["learning_rate"], momentum=config["momentum"])
-        critic_optim = torch.optim.SGD(critic.parameters(), lr=config["learning_rate"], momentum=config["momentum"])
+        actor_optim = torch.optim.SGD(actor.parameters(), lr=config["learning_rate"], momentum=config["momentum"], weight_decay=config["weight_decay"])
+        critic_optim = torch.optim.SGD(critic.parameters(), lr=config["learning_rate"], momentum=config["momentum"], weight_decay=config["weight_decay"])
     elif config["optimizer"] == "Adam":
-        actor_optim = torch.optim.Adam(actor.parameters(), lr=config["learning_rate"])
-        critic_optim = torch.optim.Adam(critic.parameters(), lr=config["learning_rate"])
+        actor_optim = torch.optim.Adam(actor.parameters(), lr=config["learning_rate"], weight_decay=config["weight_decay"])
+        critic_optim = torch.optim.Adam(critic.parameters(), lr=config["learning_rate"], weight_decay=config["weight_decay"])
     else:
         raise ValueError(f"No optimizer of type {config['optimizer']}")
     # Repeat for however many episodes
@@ -55,7 +62,7 @@ def main(world_pth: Path, config: dict, output_dir: Path):
             # Sample change to robot
             pred_means, pred_deviations = actor(curr_state)
             pred_means = torch.nn.functional.tanh(pred_means)[0] * MAX_SPEED_CHANGE
-            pred_deviations = torch.nn.functional.relu(pred_deviations)[0]
+            pred_deviations = torch.nn.functional.relu(pred_deviations)[0] + 1e-8
             speed_change, angle_change = torch.normal(pred_means, pred_deviations)
             speed_change = torch.clip(speed_change, -MAX_SPEED_CHANGE, MAX_SPEED_CHANGE)
             angle_change = torch.clip(angle_change, -MAX_ANGLE_CHANGE, MAX_ANGLE_CHANGE)
@@ -79,7 +86,8 @@ def main(world_pth: Path, config: dict, output_dir: Path):
             else:
                 advantage = reward + (GAMMA * pred_reward_ns) - pred_reward_cs
                 critic_target = reward + (GAMMA * pred_reward_ns)
-            actor_loss = torch.mean(-advantage * torch.log(pred_deviations + 1e-8))
+            actor_loss = advantage * (log_prob(speed_change, pred_means[0], pred_deviations[0]) \
+                                         + log_prob(angle_change, pred_means[0], pred_deviations[0]))
             critic_loss = torch.nn.functional.mse_loss(pred_reward_cs, critic_target)
             # Update parameters
             actor_loss.backward(retain_graph=True)
