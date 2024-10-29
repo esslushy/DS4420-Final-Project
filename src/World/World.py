@@ -4,6 +4,7 @@ from World.Robot import Robot
 from typing import List
 import torch
 from torch_geometric.data import Data
+from ProjectParameters import SUCCESS_REWARD, TIME_SCALE, DISTANCE_SCALE, COLLISION_SCALE
 
 class World():
     def __init__(self, width: int, height: int, goal: Entity, robot: Robot, entities: List[Entity]) -> None:
@@ -42,8 +43,8 @@ class World():
         """
         Computes the reward for the robot at the current time step
         """    
-        return - (self.robot.position.distance(self.goal.position) / 100) - (step / 1000) \
-            - self.robot.num_collisions + (100 if self.robot_reached_goal() else 0)
+        return - (self.robot.position.distance(self.goal.position) * DISTANCE_SCALE) - (step * TIME_SCALE) \
+            - (self.robot.num_collisions * COLLISION_SCALE) + (SUCCESS_REWARD if self.robot_reached_goal() else 0)
     
     def compute_graph(self) -> Data:
         """

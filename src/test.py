@@ -26,6 +26,7 @@ def draw_world(frame, world: World, model, ax):
     # Update robot position
     world.robot.update_position(world.width, world.height)
     # Update rest of entities to next state, compute collisions
+    ax.clear()
     ax.set_xlim(0, world.width)
     ax.set_ylim(0, world.height)
     for entity in world.entities:

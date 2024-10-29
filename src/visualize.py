@@ -7,6 +7,7 @@ from Utils import load_module
 
 def draw_world(frame, world: World, ax):
     world.update_entities_position()
+    ax.clear()
     ax.set_xlim(0, world.width)
     ax.set_ylim(0, world.height)
     for entity in world.entities:
