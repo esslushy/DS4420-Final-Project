@@ -43,8 +43,8 @@ def main(world_pth: Path, config: dict, output_dir: Path):
     successful_episodes = []
     for episode in tqdm(range(config["num_episodes"]), "Episode"):
         episode_rewards = list()
-        episode_loss = list()
-        for step in tqdm(range(config["max_steps"]), "Step"):
+        episode_losses = list()
+        for step in tqdm(range(config["max_steps"]), "Step", leave=False):
             actor_optim.zero_grad()
             critic_optim.zero_grad()
             # Update world
@@ -74,12 +74,12 @@ def main(world_pth: Path, config: dict, output_dir: Path):
             # Compute loss
             if world.robot_reached_goal():
                 advantage = reward - pred_reward_cs
-                critic_target = reward
+                critic_target = torch.tensor(reward, dtype=torch.float32).reshape(1,1)
             else:
                 advantage = reward + (GAMMA * pred_reward_ns) - pred_reward_cs
                 critic_target = reward + (GAMMA * pred_reward_ns)
-            actor_loss = advantage * (log_prob(speed_change, pred_means[0], pred_deviations[0]) \
-                                         + log_prob(angle_change, pred_means[0], pred_deviations[0]))
+            actor_loss = -advantage * (log_prob(speed_change, pred_means[0], pred_deviations[0]) \
+                                         + log_prob(angle_change, pred_means[1], pred_deviations[1]))
             critic_loss = torch.nn.functional.mse_loss(pred_reward_cs, critic_target)
             # Update parameters
             actor_loss.backward(retain_graph=True)
@@ -88,14 +88,19 @@ def main(world_pth: Path, config: dict, output_dir: Path):
             critic_optim.step()
             # Save reward and loss
             episode_rewards.append(reward)
-            episode_loss.append(actor_loss.item() + critic_loss.item())
+            episode_losses.append(actor_loss.item() + critic_loss.item())
             if world.robot_reached_goal():
                 successful_episodes.append(episode)
                 break
         # Reset world at end of episode
+        avg_episode_reward = np.mean(episode_rewards)
+        avg_episode_loss = np.mean(episode_losses)
+        print(f"Episode {episode+1}:")
+        print("Reward:", avg_episode_reward)
+        print("Loss:", avg_episode_loss)
         world.reset()
-        rewards.append(np.mean(episode_rewards))
-        losses.append(np.mean(episode_loss))
+        rewards.append(avg_episode_reward)
+        losses.append(avg_episode_loss)
     # Save results
     output_dir.mkdir(exist_ok=True)
     config["training_world"] = str(world_pth)

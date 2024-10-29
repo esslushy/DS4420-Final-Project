@@ -2,6 +2,7 @@ from torch import nn
 from Model.Layers import EquivariantMessageLayer, EquivariantUpdateLayer, GatedEquivariantBlock
 from Model.CutOff import CosineCutoff
 from Model.GaussianDistance import GaussianDistance
+import torch
 
 class EMPNNModel(nn.Module):
     def __init__(self, outputs: list, relevant_radius=100.0, h_dim=128, num_interation_layers=3, num_fully_connected_layers=3) -> None:
@@ -43,7 +44,7 @@ class EMPNNModel(nn.Module):
         # Expand dims
         v, s = self.embed_layer(v, s)
         
-        d_ij = data.edge_attr.norm(dim=-1, keepdim=True)
+        d_ij = torch.norm(data.edge_attr, dim=-1, keepdim=True)
         d_ij[d_ij == 0] = 1 # Stability
         dir_ij = data.edge_attr / d_ij
         phi_ij = self.gauss_expansion.expand(d_ij)

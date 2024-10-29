@@ -1,0 +1,10 @@
+{
+  "model": "EMPNN",
+  "optimizer": "Adam",
+  "momentum": 0.9,
+  "learning_rate": 0.001,
+  "num_episodes": 5,
+  "max_steps": 1000,
+  "weight_decay": 0.01,
+  "training_world": "TrainingWorlds\\BasicWorld.py"
+}
