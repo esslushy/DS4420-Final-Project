@@ -5,7 +5,7 @@ from Model.GaussianDistance import GaussianDistance
 import torch
 
 class EMPNNModel(nn.Module):
-    def __init__(self, outputs: list, relevant_radius=100.0, h_dim=128, num_interation_layers=3, num_fully_connected_layers=3) -> None:
+    def __init__(self, outputs: list, relevant_radius=100.0, h_dim=128, num_interation_layers=3, num_fully_connected_layers=1) -> None:
         super().__init__()
         self.gauss_expansion = GaussianDistance(0, relevant_radius, 1)
         

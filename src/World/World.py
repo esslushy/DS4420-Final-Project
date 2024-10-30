@@ -60,15 +60,15 @@ class World():
             [0, 0],
             [0, 0]    
         ]
-        # Size of objects in scene
-        sizes = [
-            self.goal.radius, 
-            self.robot.radius, 
-            *[e.radius for e in self.entities],
-            0,
-            0,
-            0,
-            0    
+        # Size of objects in scene and number collisions
+        x = [
+            [self.goal.radius, 0], 
+            [self.robot.radius, self.robot.num_collisions], 
+            *[[e.radius, 0] for e in self.entities],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+            [0, 0]    
         ]
 
         # Edges are robot(1) to goal(0), entities and walls(2+) to robot(1)
@@ -89,7 +89,7 @@ class World():
             [0, self.robot.position.y]
         ]
         return Data(
-            x=torch.tensor(sizes, dtype=torch.float32),
+            x=torch.tensor(x, dtype=torch.float32),
             edge_index=torch.tensor(edge_index, dtype=torch.int64), 
             node_attr=torch.tensor(velocities, dtype=torch.float32), 
             edge_attr=torch.tensor(displacements, dtype=torch.float32)

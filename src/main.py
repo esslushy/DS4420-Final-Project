@@ -18,6 +18,10 @@ def log_prob(value, mean, stdev):
     return -torch.log(stdev) - ((1/2)*math.log(math.pi/2)) - ((1/2)*(((value-mean)/stdev)**2))
 
 def main(world_pth: Path, config: dict, output_dir: Path):
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
     # Get world
     world: World = load_module("custom_env", world_pth).world
     # Intialize actor and critic networks
@@ -29,6 +33,8 @@ def main(world_pth: Path, config: dict, output_dir: Path):
         critic = GCNNModel(outputs=[1])
     else:
         raise ValueError(f"No model of type {config['model']}")
+    actor.to(device)
+    critic.to(device)
     if config["optimizer"] == "SGD":
         actor_optim = torch.optim.SGD(actor.parameters(), lr=config["learning_rate"], momentum=config["momentum"], weight_decay=config["weight_decay"])
         critic_optim = torch.optim.SGD(critic.parameters(), lr=config["learning_rate"], momentum=config["momentum"], weight_decay=config["weight_decay"])
@@ -37,6 +43,8 @@ def main(world_pth: Path, config: dict, output_dir: Path):
         critic_optim = torch.optim.Adam(critic.parameters(), lr=config["learning_rate"], weight_decay=config["weight_decay"])
     else:
         raise ValueError(f"No optimizer of type {config['optimizer']}")
+    actor_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(actor_optim, config["num_episodes"] * config["max_steps"], eta_min=config["learning_rate"]*1e-5)
+    critic_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(critic_optim, config["num_episodes"] * config["max_steps"], eta_min=config["learning_rate"]*1e-5)
     # Repeat for however many episodes
     rewards = []
     final_rewards = []
@@ -76,7 +84,7 @@ def main(world_pth: Path, config: dict, output_dir: Path):
             # Compute loss
             if world.robot_reached_goal():
                 advantage = reward - pred_reward_cs
-                critic_target = torch.tensor(reward, dtype=torch.float32).reshape(1,1)
+                critic_target = torch.tensor(reward, dtype=torch.float32).reshape(1,1).to(device)
             else:
                 advantage = reward + (GAMMA * pred_reward_ns) - pred_reward_cs
                 critic_target = reward + (GAMMA * pred_reward_ns)
@@ -88,6 +96,8 @@ def main(world_pth: Path, config: dict, output_dir: Path):
             critic_loss.backward()
             actor_optim.step()
             critic_optim.step()
+            actor_scheduler.step()
+            critic_scheduler.step()
             # Save reward and loss
             episode_rewards.append(reward)
             episode_losses.append(actor_loss.item() + critic_loss.item())
