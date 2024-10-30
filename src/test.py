@@ -12,6 +12,8 @@ from Model.EMPNN import EMPNNModel
 from Model.GCNN import GCNNModel
 
 def draw_world(frame, world: World, model, ax):
+    if world.robot_reached_goal():
+        return
     world.update_entities_position()
     curr_state = world.compute_graph()
     # Sample change to robot

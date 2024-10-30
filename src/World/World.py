@@ -1,4 +1,3 @@
-from World.Vector2D import Vector2D
 from World.Entity import Entity
 from World.Robot import Robot
 from typing import List

@@ -1,5 +1,5 @@
 from World.World import World
-from World.StillEntity import StillEntity
+from World.Entity import StillEntity
 from World.Vector2D import Vector2D
 from World.Robot import Robot
 world = World(
