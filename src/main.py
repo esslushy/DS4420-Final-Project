@@ -17,7 +17,37 @@ def log_prob(value, mean, stdev):
     """
     return -torch.log(stdev) - ((1/2)*math.log(math.pi/2)) - ((1/2)*(((value-mean)/stdev)**2))
 
-def main(world_pth: Path, config: dict, output_dir: Path):
+class RewardNormalizer():
+    """
+    Keeps a running mean and stdev of reward and uses that to normalize.
+    """
+    def __init__(self, epsilon = 1e-8):
+        # Initial values for running mean and standard deviation
+        self.mean_reward = 0
+        self.var_reward = 0
+        self.num_rewards = 0
+        self.epsilon = epsilon # To avoid division by zero
+
+    def _update(self, reward):
+        """
+        Update running mean and variance using Welford's algorithm.
+        https://jonisalonen.com/2013/deriving-welfords-method-for-computing-variance/
+        """
+        self.num_rewards += 1
+        delta = reward - self.mean_reward
+        self.mean_reward += delta / self.num_rewards
+        delta2 = reward - self.mean_reward
+        self.var_reward += delta * delta2  
+        
+    def normalize(self, reward):
+        """
+        Normalize the reward using the running mean and variance.
+        """
+        self._update(reward)
+        std_reward = np.sqrt(self.var_reward / self.num_rewards + self.epsilon)
+        return (reward - self.mean_reward) / std_reward
+
+def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
     if torch.cuda.is_available():
         device = torch.device("cuda")
     else:
@@ -33,6 +63,10 @@ def main(world_pth: Path, config: dict, output_dir: Path):
         critic = GCNNModel(outputs=[1])
     else:
         raise ValueError(f"No model of type {config['model']}")
+    # Load prior changed models
+    if from_existing:
+        actor.load_state_dict(torch.load(from_existing.joinpath("actor.model")))
+        critic.load_state_dict(torch.load(from_existing.joinpath("critic.model")))
     actor.to(device)
     critic.to(device)
     if config["optimizer"] == "SGD":
@@ -43,14 +77,16 @@ def main(world_pth: Path, config: dict, output_dir: Path):
         critic_optim = torch.optim.Adam(critic.parameters(), lr=config["learning_rate"], weight_decay=config["weight_decay"])
     else:
         raise ValueError(f"No optimizer of type {config['optimizer']}")
-    actor_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(actor_optim, config["num_episodes"] * config["max_steps"], eta_min=config["learning_rate"]*1e-5)
-    critic_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(critic_optim, config["num_episodes"] * config["max_steps"], eta_min=config["learning_rate"]*1e-5)
+    actor_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(actor_optim, config["num_episodes"] * config["max_steps"], eta_min=config["learning_rate"]*1e-3)
+    critic_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(critic_optim, config["num_episodes"] * config["max_steps"], eta_min=config["learning_rate"]*1e-3)
     # Repeat for however many episodes
     rewards = []
     final_rewards = []
     losses = []
     collisions = []
     successful_episodes = []
+    # Reward normalization during training
+    normalizer = RewardNormalizer()
     for episode in tqdm(range(config["num_episodes"]), "Episode"):
         episode_rewards = list()
         episode_losses = list()
@@ -77,17 +113,18 @@ def main(world_pth: Path, config: dict, output_dir: Path):
             world.compute_collisions()
             # Observe next state
             reward = world.compute_reward(step)
+            normalized_reward = normalizer.normalize(reward)
             next_state = world.compute_graph()
             # Get value from critic
             pred_reward_cs = critic(curr_state)[0]
             pred_reward_ns = critic(next_state)[0]
             # Compute loss
             if world.robot_reached_goal():
-                advantage = reward - pred_reward_cs
-                critic_target = torch.tensor(reward, dtype=torch.float32).reshape(1,1).to(device)
+                advantage = normalized_reward - pred_reward_cs
+                critic_target = torch.tensor(normalized_reward, dtype=torch.float32).reshape(1,1).to(device)
             else:
-                advantage = reward + (GAMMA * pred_reward_ns) - pred_reward_cs
-                critic_target = reward + (GAMMA * pred_reward_ns)
+                advantage = normalized_reward + (GAMMA * pred_reward_ns) - pred_reward_cs
+                critic_target = normalized_reward + (GAMMA * pred_reward_ns)
             actor_loss = -advantage * (log_prob(speed_change, pred_means[0], pred_deviations[0]) \
                                          + log_prob(angle_change, pred_means[1], pred_deviations[1]))
             critic_loss = torch.nn.functional.mse_loss(pred_reward_cs, critic_target)
@@ -139,7 +176,8 @@ if __name__ == "__main__":
     args.add_argument("world", help="The path to the world to run on.", type=Path)
     args.add_argument("config", help="The config file for the experiment", type=Path)
     args.add_argument("output_dir", help="The location to save the final results to", type=Path)
+    args.add_argument("--from-existing", help="Train from existing models. Path to the folder", type=Path)
     args = args.parse_args()
     with args.config.open() as f:
         config = json.load(f)
-    main(args.world, config, args.output_dir)
+    main(args.world, config, args.output_dir, args.from_existing)
