@@ -77,8 +77,6 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
         critic_optim = torch.optim.Adam(critic.parameters(), lr=config["learning_rate"], weight_decay=config["weight_decay"])
     else:
         raise ValueError(f"No optimizer of type {config['optimizer']}")
-    actor_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(actor_optim, config["num_episodes"] * config["max_steps"], eta_min=config["learning_rate"]*1e-3)
-    critic_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(critic_optim, config["num_episodes"] * config["max_steps"], eta_min=config["learning_rate"]*1e-3)
     # Repeat for however many episodes
     rewards = []
     final_rewards = []
@@ -113,18 +111,17 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
             world.compute_collisions()
             # Observe next state
             reward = world.compute_reward(step)
-            normalized_reward = normalizer.normalize(reward)
             next_state = world.compute_graph()
             # Get value from critic
             pred_reward_cs = critic(curr_state)[0]
             pred_reward_ns = critic(next_state)[0]
             # Compute loss
             if world.robot_reached_goal():
-                advantage = normalized_reward - pred_reward_cs
-                critic_target = torch.tensor(normalized_reward, dtype=torch.float32).reshape(1,1).to(device)
+                advantage = reward - pred_reward_cs
+                critic_target = torch.tensor(reward, dtype=torch.float32).reshape(1,1).to(device)
             else:
-                advantage = normalized_reward + (GAMMA * pred_reward_ns) - pred_reward_cs
-                critic_target = normalized_reward + (GAMMA * pred_reward_ns)
+                advantage = reward + (GAMMA * pred_reward_ns) - pred_reward_cs
+                critic_target = reward + (GAMMA * pred_reward_ns)
             actor_loss = -advantage * (log_prob(speed_change, pred_means[0], pred_deviations[0]) \
                                          + log_prob(angle_change, pred_means[1], pred_deviations[1]))
             critic_loss = torch.nn.functional.mse_loss(pred_reward_cs, critic_target)
@@ -133,8 +130,6 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
             critic_loss.backward()
             actor_optim.step()
             critic_optim.step()
-            actor_scheduler.step()
-            critic_scheduler.step()
             # Save reward and loss
             episode_rewards.append(reward)
             episode_losses.append(actor_loss.item() + critic_loss.item())

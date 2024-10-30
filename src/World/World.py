@@ -44,7 +44,7 @@ class World():
         """    
         return - (self.robot.position.distance(self.goal.position)**2 * DISTANCE_SCALE) - (step * TIME_SCALE) \
             - (self.robot.num_collisions * COLLISION_SCALE) + (SUCCESS_REWARD if self.robot_reached_goal() else 0) \
-            + self.robot.velocity * SPEED_SCALE
+            + (self.robot.velocity.magnitude() * SPEED_SCALE)
     
     def compute_graph(self) -> Data:
         """
