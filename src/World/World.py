@@ -42,9 +42,11 @@ class World():
         """
         Computes the reward for the robot at the current time step
         """    
-        return - (self.robot.position.distance(self.goal.position)**2 * DISTANCE_SCALE) - (step * TIME_SCALE) \
-            - (self.robot.num_collisions * COLLISION_SCALE) + (SUCCESS_REWARD if self.robot_reached_goal() else 0) \
-            + (self.robot.velocity.magnitude() * SPEED_SCALE)
+        if self.robot_reached_goal():
+            return SUCCESS_REWARD - (step * TIME_SCALE) - (self.robot.num_collisions * COLLISION_SCALE)
+        else:
+            return - (self.robot.position.distance(self.goal.position)**2 * DISTANCE_SCALE) - (step * TIME_SCALE) \
+                - (self.robot.num_collisions * COLLISION_SCALE) + (self.robot.velocity.magnitude() * SPEED_SCALE)
     
     def compute_graph(self) -> Data:
         """

@@ -17,36 +17,6 @@ def log_prob(value, mean, stdev):
     """
     return -torch.log(stdev) - ((1/2)*math.log(math.pi/2)) - ((1/2)*(((value-mean)/stdev)**2))
 
-class RewardNormalizer():
-    """
-    Keeps a running mean and stdev of reward and uses that to normalize.
-    """
-    def __init__(self, epsilon = 1e-8):
-        # Initial values for running mean and standard deviation
-        self.mean_reward = 0
-        self.var_reward = 0
-        self.num_rewards = 0
-        self.epsilon = epsilon # To avoid division by zero
-
-    def _update(self, reward):
-        """
-        Update running mean and variance using Welford's algorithm.
-        https://jonisalonen.com/2013/deriving-welfords-method-for-computing-variance/
-        """
-        self.num_rewards += 1
-        delta = reward - self.mean_reward
-        self.mean_reward += delta / self.num_rewards
-        delta2 = reward - self.mean_reward
-        self.var_reward += delta * delta2  
-        
-    def normalize(self, reward):
-        """
-        Normalize the reward using the running mean and variance.
-        """
-        self._update(reward)
-        std_reward = np.sqrt(self.var_reward / self.num_rewards + self.epsilon)
-        return (reward - self.mean_reward) / std_reward
-
 def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
     if torch.cuda.is_available():
         device = torch.device("cuda")
@@ -83,9 +53,8 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
     losses = []
     collisions = []
     successful_episodes = []
-    # Reward normalization during training
-    normalizer = RewardNormalizer()
-    for episode in tqdm(range(config["num_episodes"]), "Episode"):
+    final_distances = []
+    for episode in range(config["num_episodes"]):
         episode_rewards = list()
         episode_losses = list()
         for step in tqdm(range(config["max_steps"]), "Step", leave=False):
@@ -139,13 +108,19 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
         # Reset world at end of episode
         avg_episode_reward = np.mean(episode_rewards)
         avg_episode_loss = np.mean(episode_losses)
+        if world.robot_reached_goal():
+            final_distance = 0
+        else:
+            final_distance = world.robot.position.distance(world.goal.position)
         print(f"Episode {episode+1}:")
         print("Avg. Reward:", avg_episode_reward)
         print("Loss:", avg_episode_loss)
         print("Collisions:", world.robot.num_collisions)
         print("Final Reward:", reward)
+        print("Final Distance:", final_distance)
         rewards.append(avg_episode_reward)
         final_rewards.append(reward)
+        final_distances.append(final_distance)
         losses.append(avg_episode_loss)
         collisions.append(world.robot.num_collisions)
         world.reset()
@@ -159,6 +134,7 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
             "training_loss": losses,
             "training_reward": rewards,
             "final_reward": final_rewards,
+            "final_distance": final_distances,
             "collisions": collisions,
             "successful_episodes": successful_episodes
         }, f, indent=2)

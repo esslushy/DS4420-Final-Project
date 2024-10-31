@@ -6,7 +6,7 @@ class GCNNModel(nn.Module):
     """
     Represents a graph convolutional network
     """
-    def __init__(self, outputs: list, node_dim=64, edge_dim=16, num_conv_layers=3, h_dim=128, num_fully_connected_layers=6) -> None:
+    def __init__(self, outputs: list, node_dim=64, edge_dim=32, num_conv_layers=4, h_dim=128, num_fully_connected_layers=6) -> None:
         super().__init__()
         self.node_dim = node_dim
         self.edge_dim = edge_dim
