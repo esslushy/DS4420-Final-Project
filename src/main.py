@@ -2,6 +2,7 @@ from argparse import ArgumentParser
 import json
 from Model.EMPNN import EMPNNModel
 from Model.GCNN import GCNNModel
+from Model.GTransformer import GTransformer
 from World.World import World
 from pathlib import Path
 import torch
@@ -31,6 +32,9 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
     elif config["model"] == "GCNN":
         actor = GCNNModel(outputs=[2, 2])
         critic = GCNNModel(outputs=[1])
+    elif config["model"] == "GTransformer":
+        actor = GTransformer(outputs=[2, 2])
+        critic = GTransformer(outputs=[1])
     else:
         raise ValueError(f"No model of type {config['model']}")
     # Load prior changed models
@@ -63,7 +67,7 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
             # Update world
             world.update_entities_position()
             # Get state
-            curr_state = world.compute_graph()
+            curr_state = world.compute_graph().to(device)
             # Sample change to robot
             pred_means, pred_deviations = actor(curr_state)
             pred_means = torch.nn.functional.tanh(pred_means)[0] * MAX_SPEED_CHANGE
@@ -80,7 +84,7 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
             world.compute_collisions()
             # Observe next state
             reward = world.compute_reward(step)
-            next_state = world.compute_graph()
+            next_state = world.compute_graph().to(device)
             # Get value from critic
             pred_reward_cs = critic(curr_state)[0]
             pred_reward_ns = critic(next_state)[0]
