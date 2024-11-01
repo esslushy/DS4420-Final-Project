@@ -17,6 +17,7 @@ class GaussianDistance(torch.nn.Module):
         step: float
           Step size for the Gaussian filter
         """
+        super().__init__()
         assert dmin < dmax
         assert dmax - dmin > step
         self.filter = torch.arange(dmin, dmax + step, step)
