@@ -11,25 +11,21 @@ class GaussianDistance(torch.nn.Module):
         ----------
 
         dmin: float
-          Minimum interatomic distance
+            Minimum distance
         dmax: float
-          Maximum interatomic distance
+            Maximum distance
         step: float
-          Step size for the Gaussian filter
+            Step size for the Gaussian filter
         """
         super().__init__()
         assert dmin < dmax
         assert dmax - dmin > step
-        self.filter = torch.arange(dmin, dmax + step, step)
+        self.register_buffer("filter", torch.arange(dmin, dmax + step, step))
         if var is None:
             var = step
         self.var = var
 
-    def to(self, device):
-        super().to(device)
-        self.filter = self.filter.to(device)
-
-    def expand(self, distances: torch.Tensor):
+    def expand(self, distances):
         """
         Apply Gaussian disntance filter to a numpy distance array
 
@@ -37,12 +33,13 @@ class GaussianDistance(torch.nn.Module):
         ----------
 
         distance: np.array shape n-d array
-          A distance matrix of any shape
+            A distance matrix of any shape
 
         Returns
         -------
         expanded_distance: shape (n+1)-d array
-          Expanded distance matrix with the last dimension of length
-          len(self.filter)
+            Expanded distance matrix with the last dimension of length
+            len(self.filter)
         """
-        return torch.exp(-((distances.reshape(-1, 1) - self.filter) ** 2) / (self.var ** 2))
+        return torch.exp(-(distances.reshape(-1, 1) - self.get_buffer("filter")) ** 2 /
+                      self.var ** 2)
