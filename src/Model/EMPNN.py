@@ -12,7 +12,7 @@ class EMPNNModel(nn.Module):
         self.rbf_dim = self.gauss_expansion.filter.shape[0]
         self.h_dim = h_dim
 
-        self.embed_layer = GatedEquivariantBlock(1, 1, h_dim, h_dim, h_dim)
+        self.embed_layer = GatedEquivariantBlock(2, 1, h_dim, h_dim, h_dim)
 
         self.message_passing_layers = []
         self.update_layers = []
