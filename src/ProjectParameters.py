@@ -5,6 +5,7 @@ MAX_ANGLE_CHANGE=math.pi/8 # Radians
 MAX_SPEED_CHANGE=0.1
 GAMMA = 0.9 # Reward decay
 BETA = 0.1 # Entropy factor
+BETA_DECAY = 0.01 # How fast Beta decays (encourage less exploration over time)
 # Reward
 DISTANCE_SCALE = 100
 COLLISION_SCALE = 10

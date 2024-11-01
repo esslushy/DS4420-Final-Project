@@ -7,7 +7,7 @@ from World.World import World
 from pathlib import Path
 import torch
 from ProjectParameters import MAX_ANGLE_CHANGE, MAX_SPEED_CHANGE, GAMMA, SUCCESS_REWARD,\
-      COLLISION_SCALE, DISTANCE_SCALE, TIME_SCALE, SPEED_SCALE, BETA
+      COLLISION_SCALE, DISTANCE_SCALE, TIME_SCALE, SPEED_SCALE, BETA, BETA_DECAY
 import numpy as np
 from tqdm import tqdm
 import math
@@ -32,6 +32,17 @@ def scale_reward(reward, config, world: World):
         - (TIME_SCALE * config["max_steps"])
     return (2 * ((reward - reward_min)/(reward_max - reward_min))) - 1
 
+class Decayer():
+    """
+    Decays a value
+    """
+    def __init__(self, decay_rate):
+        self.decay_rate = decay_rate
+        self.step = -1
+
+    def decay(self, value):
+        self.step += 1
+        return value * math.exp(-self.decay_rate * self.step)
 
 def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
     if torch.cuda.is_available():
@@ -73,6 +84,7 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
     collisions = []
     successful_episodes = []
     final_distances = []
+    decayer = Decayer(BETA_DECAY)
     for episode in range(config["num_episodes"]):
         episode_rewards = list()
         episode_losses = list()
@@ -114,7 +126,7 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
             actor_loss = -advantage * (log_prob(speed_change, pred_means[0], pred_deviations[0]) \
                                      + log_prob(angle_change, pred_means[1], pred_deviations[1]))
             # Encourage exploration
-            actor_loss = actor_loss - (BETA * (compute_entropy(pred_deviations[0]) + compute_entropy(pred_deviations[1])))
+            actor_loss = actor_loss - (decayer.decay(BETA) * (compute_entropy(pred_deviations[0]) + compute_entropy(pred_deviations[1])))
             critic_loss = torch.nn.functional.mse_loss(pred_reward_cs, critic_target)
             # Update parameters
             actor_loss.backward(retain_graph=True)
