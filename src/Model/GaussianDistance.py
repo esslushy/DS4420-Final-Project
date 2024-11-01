@@ -25,6 +25,10 @@ class GaussianDistance(torch.nn.Module):
             var = step
         self.var = var
 
+    def to(self, device):
+        super().to(device)
+        self.filter = self.filter.to(device)
+
     def expand(self, distances: torch.Tensor):
         """
         Apply Gaussian disntance filter to a numpy distance array
