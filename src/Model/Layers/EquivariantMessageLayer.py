@@ -3,14 +3,12 @@ from torch import nn
 from torch_scatter import scatter
 
 class EquivariantMessageLayer(nn.Module):
-    def __init__(self, h_dim, rbf_dim, cutoff_fn):
+    def __init__(self, h_dim):
         """
           Initializes an equivariant message passing layer
 
           Args:
             h_dim: The hidden dimension used in the model. Same as embedding dim
-            rbf_dim: How large the rbf expansion is
-            cutoff_fn: What the cutoff function is to use
         """
         super().__init__()
 
@@ -18,14 +16,13 @@ class EquivariantMessageLayer(nn.Module):
         
         self.embed_net = nn.Sequential(
             nn.Linear(h_dim, h_dim),
-            nn.SiLU(),
+            nn.Tanh(),
             nn.Linear(h_dim, 3*h_dim)
         )
 
-        self.rbf_expansion = nn.Linear(rbf_dim, 3 * h_dim)
-        self.cutoff_fn = cutoff_fn
+        self.distance_expansion = nn.Linear(1, 3 * h_dim)
 
-    def forward(self, v, s, edge_index, phi_ij, d_ij, dir_ij):
+    def forward(self, v, s, edge_index, d_ij, dir_ij):
         """
           Runs a pass of the messaging layer.
 
@@ -42,10 +39,10 @@ class EquivariantMessageLayer(nn.Module):
         """
         # currently in shape [number of nodes]x[3 * h_dim]. Holds expanded scalar values
         s_expanded = self.embed_net(s)
-        # Expands rbf to [number of edges]x[3 * h_dim]. Cutoff is applied edgewise
-        rbf_expanded_cutoff = self.rbf_expansion(phi_ij) * self.cutoff_fn(d_ij) 
+        # Expands rbf to [number of edges]x[3 * h_dim]. 
+        distance_expanded = self.distance_expansion(d_ij)
         # Index s by edges so it becomes [number of edges]x[3 * h_dim]. Specifically the i edge.
-        grouped_values = s_expanded[edge_index[0]] * rbf_expanded_cutoff
+        grouped_values = s_expanded[edge_index[0]] * distance_expanded
         # Split it into the 3 separate change vectors. They are all [number of edges]x[h_dim]
         dv_v, ds, dvr = torch.split(grouped_values, self.h_dim, dim=-1)
         # Update scalar values. We add up all ds with those that have the some source node.

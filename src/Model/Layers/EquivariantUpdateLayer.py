@@ -10,7 +10,7 @@ class EquivariantUpdateLayer(nn.Module):
         self.vector_expansion = nn.Linear(h_dim, 2*h_dim, bias=False)
         self.scalar_net = nn.Sequential(
             nn.Linear(2 * h_dim, h_dim),
-            nn.SiLU(),
+            nn.Tanh(),
             nn.Linear(h_dim, 3 * h_dim)
         )
 
