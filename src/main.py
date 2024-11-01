@@ -126,8 +126,8 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
                 critic_target = reward + (GAMMA * pred_reward_ns)
             actor_loss = -advantage * (log_prob(speed_change, pred_means[0], pred_deviations[0]) \
                                      + log_prob(angle_change, pred_means[1], pred_deviations[1]))
-            # Encourage exploration
-            actor_loss = actor_loss - (decayer.decay(BETA) * (compute_entropy(pred_deviations[0]) + compute_entropy(pred_deviations[1])))
+            # Encourage exploration by allowing high changes to angle
+            actor_loss = actor_loss - (decayer.decay(BETA) * compute_entropy(pred_deviations[1]))
             critic_loss = torch.nn.functional.mse_loss(pred_reward_cs, critic_target)
             # Update parameters
             actor_loss.backward(retain_graph=True)
