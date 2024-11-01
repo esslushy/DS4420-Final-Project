@@ -6,7 +6,8 @@ from Model.GTransformer import GTransformer
 from World.World import World
 from pathlib import Path
 import torch
-from ProjectParameters import MAX_ANGLE_CHANGE, MAX_SPEED_CHANGE, GAMMA, SUCCESS_REWARD, COLLISION_SCALE, DISTANCE_SCALE, TIME_SCALE, SPEED_SCALE
+from ProjectParameters import MAX_ANGLE_CHANGE, MAX_SPEED_CHANGE, GAMMA, SUCCESS_REWARD,\
+      COLLISION_SCALE, DISTANCE_SCALE, TIME_SCALE, SPEED_SCALE, BETA
 import numpy as np
 from tqdm import tqdm
 import math
@@ -17,6 +18,9 @@ def log_prob(value, mean, stdev):
     Computes the gaussian log prob
     """
     return -torch.log(stdev) - ((1/2)*math.log(math.pi/2)) - ((1/2)*(((value-mean)/stdev)**2))
+
+def compute_entropy(stdev):
+    return 0.5 * (1 + torch.log(2 * torch.pi * (stdev**2)))
 
 def scale_reward(reward, config, world: World):
     """
@@ -108,7 +112,9 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
                 advantage = reward + (GAMMA * pred_reward_ns) - pred_reward_cs
                 critic_target = reward + (GAMMA * pred_reward_ns)
             actor_loss = -advantage * (log_prob(speed_change, pred_means[0], pred_deviations[0]) \
-                                         + log_prob(angle_change, pred_means[1], pred_deviations[1]))
+                                     + log_prob(angle_change, pred_means[1], pred_deviations[1]))
+            # Encourage exploration
+            actor_loss = actor_loss - (BETA * (compute_entropy(pred_deviations[0]) + compute_entropy(pred_deviations[1])))
             critic_loss = torch.nn.functional.mse_loss(pred_reward_cs, critic_target)
             # Update parameters
             actor_loss.backward(retain_graph=True)
@@ -124,16 +130,17 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
         # Reset world at end of episode
         avg_episode_reward = np.mean(episode_rewards)
         avg_episode_loss = np.mean(episode_losses)
-        if world.robot_reached_goal():
-            final_distance = 0
-        else:
-            final_distance = world.robot.position.distance(world.goal.position)
         print(f"Episode {episode+1}:")
         print("Avg. Reward:", avg_episode_reward)
         print("Loss:", avg_episode_loss)
         print("Collisions:", world.robot.num_collisions)
         print("Final Reward:", reward)
-        print("Final Distance:", final_distance)
+        if world.robot_reached_goal():
+            print("Reached Goal!")
+            final_distance = 0
+        else:
+            final_distance = world.robot.position.distance(world.goal.position)
+            print("Final Distance:", final_distance)
         rewards.append(avg_episode_reward)
         final_rewards.append(reward)
         final_distances.append(final_distance)
