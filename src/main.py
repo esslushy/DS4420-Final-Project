@@ -6,7 +6,7 @@ from Model.GTransformer import GTransformer
 from World.World import World
 from pathlib import Path
 import torch
-from ProjectParameters import MAX_ANGLE_CHANGE, MAX_SPEED_CHANGE, GAMMA
+from ProjectParameters import MAX_ANGLE_CHANGE, MAX_SPEED_CHANGE, GAMMA, SUCCESS_REWARD, COLLISION_SCALE, DISTANCE_SCALE, TIME_SCALE, SPEED_SCALE
 import numpy as np
 from tqdm import tqdm
 import math
@@ -17,6 +17,17 @@ def log_prob(value, mean, stdev):
     Computes the gaussian log prob
     """
     return -torch.log(stdev) - ((1/2)*math.log(math.pi/2)) - ((1/2)*(((value-mean)/stdev)**2))
+
+def scale_reward(reward, config, world: World):
+    """
+    Scales reward down to [-1, 1] range
+    """
+    reward_max = SUCCESS_REWARD + SPEED_SCALE
+    reward_min = -(COLLISION_SCALE * config["max_steps"]) \
+        - (DISTANCE_SCALE * ((world.width**2) + (world.height**2))) \
+        - (TIME_SCALE * config["max_steps"])
+    return (2 * ((reward - reward_min)/(reward_max - reward_min))) - 1
+
 
 def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
     if torch.cuda.is_available():
@@ -84,6 +95,7 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
             world.compute_collisions()
             # Observe next state
             reward = world.compute_reward(step)
+            reward = scale_reward(reward, config, world)
             next_state = world.compute_graph().to(device)
             # Get value from critic
             pred_reward_cs = critic(curr_state)[0]
