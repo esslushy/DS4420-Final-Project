@@ -86,6 +86,7 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
     final_distances = []
     decayer = Decayer(BETA_DECAY)
     for episode in range(config["num_episodes"]):
+        print(f"Episode {episode+1}:")
         episode_rewards = list()
         episode_losses = list()
         for step in tqdm(range(config["max_steps"]), "Step", leave=False):
@@ -142,7 +143,6 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
         # Reset world at end of episode
         avg_episode_reward = np.mean(episode_rewards)
         avg_episode_loss = np.mean(episode_losses)
-        print(f"Episode {episode+1}:")
         print("Avg. Reward:", avg_episode_reward)
         print("Loss:", avg_episode_loss)
         print("Collisions:", world.robot.num_collisions)
