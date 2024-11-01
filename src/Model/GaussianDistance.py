@@ -1,6 +1,6 @@
 import torch
 
-class GaussianDistance(object):
+class GaussianDistance(torch.nn.Module):
     """
     Expands the distance by Gaussian basis.
     """
