@@ -3,7 +3,7 @@ from World.Robot import Robot
 from typing import List
 import torch
 from torch_geometric.data import Data
-from ProjectParameters import SUCCESS_REWARD, TIME_SCALE, DISTANCE_SCALE, COLLISION_SCALE, SPEED_SCALE
+from ProjectParameters import SUCCESS_REWARD, TIME_SCALE, DISTANCE_SCALE, COLLISION_SCALE, SPEED_SCALE, WALL_PENALTY
 
 class World():
     def __init__(self, width: int, height: int, goal: Entity, robot: Robot, entities: List[Entity]) -> None:
@@ -13,6 +13,7 @@ class World():
 
         self.entities = entities
         self.robot = robot
+        self.hit_wall = False
 
     def update_entities_position(self):
         for entity in self.entities:
@@ -32,6 +33,9 @@ class World():
             self.robot.position.x >= self.width - self.robot.radius or \
             self.robot.position.y >= self.height - self.robot.radius):
             self.robot.num_collisions += 1
+            self.hit_wall = True
+        else:
+            self.hit_wall = False
     
     def update_entities_velocity(self):
         # Run update velocity for each entity based on collisions
@@ -46,7 +50,8 @@ class World():
             return SUCCESS_REWARD - (step * TIME_SCALE) - (self.robot.num_collisions * COLLISION_SCALE)
         else:
             return - (self.robot.position.distance(self.goal.position)**2 * DISTANCE_SCALE) - (step * TIME_SCALE) \
-                - (self.robot.num_collisions * COLLISION_SCALE) + (self.robot.velocity.magnitude() * SPEED_SCALE)
+                - (self.robot.num_collisions * COLLISION_SCALE) + (self.robot.velocity.magnitude() * SPEED_SCALE) \
+                - (int(self.hit_wall) * WALL_PENALTY)
     
     def compute_graph(self) -> Data:
         """

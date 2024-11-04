@@ -7,8 +7,9 @@ GAMMA = 0.9 # Reward decay
 BETA = 10 # Entropy factor
 BETA_DECAY = 0.0001 # How fast Beta decays (encourage less exploration over time)
 # Reward
-DISTANCE_SCALE = 100
-COLLISION_SCALE = 10000
+DISTANCE_SCALE = 1
+WALL_PENALTY = 100000
+COLLISION_SCALE = 1
 TIME_SCALE = 0.1
 SUCCESS_REWARD = 100000
 SPEED_SCALE = 0.1 # Bonus provided for robot going faster 

@@ -2,7 +2,7 @@ import importlib
 import sys
 import torch
 import math
-from ProjectParameters import SUCCESS_REWARD, COLLISION_SCALE, DISTANCE_SCALE, TIME_SCALE, SPEED_SCALE
+from ProjectParameters import SUCCESS_REWARD, COLLISION_SCALE, DISTANCE_SCALE, TIME_SCALE, SPEED_SCALE, WALL_PENALTY
 from World.World import World
 
 def load_module(module_name, module_path):
@@ -28,7 +28,7 @@ def scale_reward(reward, config, world: World):
     reward_max = SUCCESS_REWARD + SPEED_SCALE
     reward_min = -(COLLISION_SCALE * config["max_steps"]) \
         - (DISTANCE_SCALE * ((world.width**2) + (world.height**2))) \
-        - (TIME_SCALE * config["max_steps"])
+        - (TIME_SCALE * config["max_steps"]) - WALL_PENALTY
     return (2 * ((reward - reward_min)/(reward_max - reward_min))) - 1
 
 class Decayer():
