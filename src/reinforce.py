@@ -9,7 +9,7 @@ import torch
 from ProjectParameters import MAX_ANGLE_CHANGE, MAX_SPEED_CHANGE, GAMMA, BETA, BETA_DECAY
 import numpy as np
 from tqdm import tqdm
-from Utils import load_module, log_prob, compute_entropy, Decayer, scale_reward
+from Utils import load_module, log_prob, compute_entropy, scale_reward, Decayer
 
 def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
     if torch.cuda.is_available():
@@ -18,30 +18,23 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
         device = torch.device("cpu")
     # Get world
     world: World = load_module("custom_env", world_pth).world
-    # Intialize actor and critic networks
+    # Intialize policy network
     if config["model"] == "EMPNN":
-        actor = EMPNNModel(outputs=[2, 2])
-        critic = EMPNNModel(outputs=[1])
+        policy = EMPNNModel(outputs=[2, 2])
     elif config["model"] == "GCNN":
-        actor = GCNNModel(outputs=[2, 2])
-        critic = GCNNModel(outputs=[1])
+        policy = GCNNModel(outputs=[2, 2])
     elif config["model"] == "GTransformer":
-        actor = GTransformer(outputs=[2, 2])
-        critic = GTransformer(outputs=[1])
+        policy = GTransformer(outputs=[2, 2])
     else:
         raise ValueError(f"No model of type {config['model']}")
     # Load prior changed models
     if from_existing:
-        actor.load_state_dict(torch.load(from_existing.joinpath("actor.model")))
-        critic.load_state_dict(torch.load(from_existing.joinpath("critic.model")))
-    actor.to(device)
-    critic.to(device)
+        policy.load_state_dict(torch.load(from_existing.joinpath("policy.model")))
+    policy.to(device)
     if config["optimizer"] == "SGD":
-        actor_optim = torch.optim.SGD(actor.parameters(), lr=config["learning_rate"], momentum=config["momentum"], weight_decay=config["weight_decay"])
-        critic_optim = torch.optim.SGD(critic.parameters(), lr=config["learning_rate"], momentum=config["momentum"], weight_decay=config["weight_decay"])
+        policy_optim = torch.optim.SGD(policy.parameters(), lr=config["learning_rate"], momentum=config["momentum"], weight_decay=config["weight_decay"])
     elif config["optimizer"] == "Adam":
-        actor_optim = torch.optim.Adam(actor.parameters(), lr=config["learning_rate"], weight_decay=config["weight_decay"])
-        critic_optim = torch.optim.Adam(critic.parameters(), lr=config["learning_rate"], weight_decay=config["weight_decay"])
+        policy_optim = torch.optim.Adam(policy.parameters(), lr=config["learning_rate"], weight_decay=config["weight_decay"])
     else:
         raise ValueError(f"No optimizer of type {config['optimizer']}")
     # Repeat for however many episodes
@@ -55,16 +48,15 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
     for episode in range(config["num_episodes"]):
         print(f"Episode {episode+1}:")
         episode_rewards = list()
-        episode_losses = list()
+        episode_log_probs = list()
+        episode_entropy = list()
         for step in tqdm(range(config["max_steps"]), "Step", leave=False):
-            actor_optim.zero_grad()
-            critic_optim.zero_grad()
             # Update world
             world.update_entities_position()
             # Get state
             curr_state = world.compute_graph().to(device)
             # Sample change to robot
-            pred_means, pred_deviations = actor(curr_state)
+            pred_means, pred_deviations = policy(curr_state)
             pred_means = torch.nn.functional.tanh(pred_means)[0] * MAX_SPEED_CHANGE
             pred_deviations = torch.nn.functional.relu(pred_deviations)[0] + 1e-8
             speed_change, angle_change = torch.normal(pred_means, pred_deviations)
@@ -77,41 +69,33 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
             # Update rest of entities to next state, compute collisions
             world.update_entities_velocity()
             world.compute_collisions()
-            # Observe next state
+            # Observe reward
             reward = world.compute_reward(step)
             reward = scale_reward(reward, config, world)
-            next_state = world.compute_graph().to(device)
-            # Get value from critic
-            pred_reward_cs = critic(curr_state)[0]
-            pred_reward_ns = critic(next_state)[0]
-            # Compute loss
-            if world.robot_reached_goal():
-                advantage = reward - pred_reward_cs
-                critic_target = torch.tensor(reward, dtype=torch.float32).reshape(1,1).to(device)
-            else:
-                advantage = reward + (GAMMA * pred_reward_ns) - pred_reward_cs
-                critic_target = reward + (GAMMA * pred_reward_ns)
-            actor_loss = -advantage * (log_prob(speed_change, pred_means[0], pred_deviations[0]) \
-                                     + log_prob(angle_change, pred_means[1], pred_deviations[1]))
-            # Encourage exploration by allowing high changes to angle
-            actor_loss = actor_loss - (decayer.decay(BETA) * compute_entropy(pred_deviations[1]))
-            critic_loss = torch.nn.functional.mse_loss(pred_reward_cs, critic_target)
-            # Update parameters
-            actor_loss.backward(retain_graph=True)
-            critic_loss.backward()
-            actor_optim.step()
-            critic_optim.step()
-            # Save reward and loss
+            # Save reward and log prob
             episode_rewards.append(reward)
-            episode_losses.append(actor_loss.item() + critic_loss.item())
+            episode_log_probs.append(log_prob(speed_change, pred_means[0], pred_deviations[0]) \
+                                     + log_prob(angle_change, pred_means[1], pred_deviations[1]))
+            episode_entropy.append(compute_entropy(pred_deviations[1]))
             if world.robot_reached_goal():
                 successful_episodes.append(episode)
                 break
+        # Update model
+        loss = 0
+        policy_optim.zero_grad()
+        for t in range(step+1):
+            add = 0
+            for tau in range(t, step+1):
+                add = add + (GAMMA**(tau - t))*episode_rewards[tau]
+            add = add * episode_log_probs[t] - (decayer.decay(BETA) * episode_entropy[t])
+            loss = loss + add
+        loss = -(1/(step + 1)) * loss
+        loss.backward()
+        policy_optim.step()
         # Reset world at end of episode
         avg_episode_reward = np.mean(episode_rewards)
-        avg_episode_loss = np.mean(episode_losses)
         print("Avg. Reward:", avg_episode_reward)
-        print("Loss:", avg_episode_loss)
+        print("Loss:", loss.item())
         print("Collisions:", world.robot.num_collisions)
         print("Final Reward:", reward)
         if world.robot_reached_goal():
@@ -123,7 +107,7 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
         rewards.append(avg_episode_reward)
         final_rewards.append(reward)
         final_distances.append(final_distance)
-        losses.append(avg_episode_loss)
+        losses.append(loss.item())
         collisions.append(world.robot.num_collisions)
         world.reset()
     # Save results
@@ -141,8 +125,7 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
             "successful_episodes": successful_episodes
         }, f, indent=2)
     # Save models
-    torch.save(actor.state_dict(), output_dir.joinpath("actor.model"))
-    torch.save(critic.state_dict(), output_dir.joinpath("critic.model"))
+    torch.save(policy.state_dict(), output_dir.joinpath("policy.model"))
     
 if __name__ == "__main__":
     args = ArgumentParser()
