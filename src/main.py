@@ -44,6 +44,9 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
         critic_optim = torch.optim.Adam(critic.parameters(), lr=config["learning_rate"], weight_decay=config["weight_decay"])
     else:
         raise ValueError(f"No optimizer of type {config['optimizer']}")
+    # Schedulers
+    actor_scheduler = torch.optim.lr_scheduler.MultiStepLR(actor_optim, [config["num_episodes"]/2], 0.1)
+    critic_scheduler = torch.optim.lr_scheduler.MultiStepLR(critic_optim, [config["num_episodes"]/2], 0.1)
     # Repeat for however many episodes
     rewards = []
     final_rewards = []
@@ -126,6 +129,9 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
         losses.append(avg_episode_loss)
         collisions.append(world.robot.num_collisions)
         world.reset()
+        # Decay learning rate
+        actor_scheduler.step()
+        critic_scheduler.step()
     # Save results
     output_dir.mkdir(exist_ok=True)
     config["training_world"] = str(world_pth)
