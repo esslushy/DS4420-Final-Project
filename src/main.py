@@ -85,8 +85,8 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
             reward = scale_reward(reward, config, world)
             next_state = world.compute_graph().to(device)
             # Get value from critic
-            pred_reward_cs = critic(curr_state).tanh()[0]
-            pred_reward_ns = critic(next_state).tanh()[0]
+            pred_reward_cs = critic(curr_state)[0].tanh()
+            pred_reward_ns = critic(next_state)[0].tanh()
             # Compute loss
             if world.robot_reached_goal():
                 advantage = reward - pred_reward_cs
