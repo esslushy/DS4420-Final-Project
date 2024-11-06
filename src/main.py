@@ -45,8 +45,8 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
     else:
         raise ValueError(f"No optimizer of type {config['optimizer']}")
     # Schedulers
-    actor_scheduler = torch.optim.lr_scheduler.MultiStepLR(actor_optim, [config["num_episodes"]/2], 0.1)
-    critic_scheduler = torch.optim.lr_scheduler.MultiStepLR(critic_optim, [config["num_episodes"]/2], 0.1)
+    actor_scheduler = torch.optim.lr_scheduler.StepLR(actor_optim, 1, 0.9)
+    critic_scheduler = torch.optim.lr_scheduler.StepLR(critic_optim, 1, 0.9)
     # Repeat for however many episodes
     rewards = []
     final_rewards = []
@@ -68,8 +68,8 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
             curr_state = world.compute_graph().to(device)
             # Sample change to robot
             pred_means, pred_deviations = actor(curr_state)
-            pred_means = torch.nn.functional.tanh(pred_means)[0] * MAX_SPEED_CHANGE
-            pred_deviations = torch.nn.functional.relu(pred_deviations)[0] + 1e-8
+            pred_means = pred_means.tanh()[0] * MAX_SPEED_CHANGE
+            pred_deviations = pred_deviations.relu()[0] + 1e-8
             speed_change, angle_change = torch.normal(pred_means, pred_deviations)
             speed_change = torch.clip(speed_change, -MAX_SPEED_CHANGE, MAX_SPEED_CHANGE)
             angle_change = torch.clip(angle_change, -MAX_ANGLE_CHANGE, MAX_ANGLE_CHANGE)
@@ -85,8 +85,8 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
             reward = scale_reward(reward, config, world)
             next_state = world.compute_graph().to(device)
             # Get value from critic
-            pred_reward_cs = critic(curr_state)[0]
-            pred_reward_ns = critic(next_state)[0]
+            pred_reward_cs = critic(curr_state).tanh()[0]
+            pred_reward_ns = critic(next_state).tanh()[0]
             # Compute loss
             if world.robot_reached_goal():
                 advantage = reward - pred_reward_cs
@@ -109,6 +109,9 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
             episode_losses.append(actor_loss.item() + critic_loss.item())
             if world.robot_reached_goal():
                 successful_episodes.append(episode)
+                # Lower learning rate on each success
+                actor_scheduler.step()
+                critic_scheduler.step()
                 break
         # Reset world at end of episode
         avg_episode_reward = np.mean(episode_rewards)
