@@ -17,7 +17,7 @@ class GTransformer(nn.Module):
         self.edge_embedding = nn.Linear(2, edge_dim)
 
         self.conv_layers = nn.ModuleList(
-            [TransformerConv(in_channels=node_dim, out_channels=node_dim, edge_dim=edge_dim, batch_norm=True) 
+            [TransformerConv(in_channels=node_dim, out_channels=node_dim, edge_dim=edge_dim) 
              for _ in range(num_conv_layers)]
         )
         self.fc = nn.Linear(node_dim, h_dim)
