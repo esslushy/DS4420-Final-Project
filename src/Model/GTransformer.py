@@ -2,7 +2,7 @@ from torch_geometric.nn.conv import TransformerConv
 import torch.nn as nn
 import torch
 
-class GTransformer(nn.Module):
+class GTransformerModel(nn.Module):
     """
     Represents a graph transformer network
     """

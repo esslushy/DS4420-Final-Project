@@ -1,8 +1,6 @@
 from argparse import ArgumentParser
 import json
-from Model.EMPNN import EMPNNModel
-from Model.GCNN import GCNNModel
-from Model.GTransformer import GTransformer
+from Model import EMPNNModel, GTransformerModel, GCNNModel
 from World.World import World
 from pathlib import Path
 import torch
@@ -24,7 +22,7 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
     elif config["model"] == "GCNN":
         policy = GCNNModel(outputs=[2, 2])
     elif config["model"] == "GTransformer":
-        policy = GTransformer(outputs=[2, 2])
+        policy = GTransformerModel(outputs=[2, 2])
     else:
         raise ValueError(f"No model of type {config['model']}")
     # Load prior changed models
