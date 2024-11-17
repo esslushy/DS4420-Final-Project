@@ -16,9 +16,9 @@ def make_graph(gcnn_results, gtransformer_results, empnn_results, x_ticks, x_lab
     plt.figure(figsize=(6, 4))
 
     # Plot each list with error bars
-    plt.errorbar(x_ticks, mean1, yerr=stddev1, label='GCNN', fmt='-o', capsize=5)
-    plt.errorbar(x_ticks, mean2, yerr=stddev2, label='GTransformer', fmt='-s', capsize=5)
-    plt.errorbar(x_ticks, mean3, yerr=stddev3, label='EMPNN', fmt='-^', capsize=5)
+    plt.errorbar(x_ticks, mean1, yerr=stddev1, label='GCNN', fmt='-o', capsize=5, color="red")
+    plt.errorbar(x_ticks, mean2, yerr=stddev2, label='GTransformer', fmt='-s', capsize=5, color="blue")
+    plt.errorbar(x_ticks, mean3, yerr=stddev3, label='EMPNN', fmt='-^', capsize=5, color="green")
 
     # Add labels and title
     plt.xlabel(x_label)
