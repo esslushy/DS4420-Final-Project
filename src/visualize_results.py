@@ -4,28 +4,39 @@ import matplotlib.pyplot as plt
 
 
 def make_graph(gcnn_results, gtransformer_results, empnn_results, x_ticks, x_label, y_label, title, save_loc):
-    mean1 = np.mean(gcnn_results, axis=1)
-    stddev1 = np.std(gcnn_results, axis=1)
+    mean1 = np.median(gcnn_results, axis=1)
+    min1 = np.min(gcnn_results, axis=1)
+    max1 = np.max(gcnn_results, axis=1)
 
-    mean2 = np.mean(gtransformer_results, axis=1)
-    stddev2 = np.std(gtransformer_results, axis=1)
+    mean2 = np.median(gtransformer_results, axis=1)
+    min2 = np.min(gtransformer_results, axis=1)
+    max2 = np.max(gtransformer_results, axis=1)
 
-    mean3 = np.mean(empnn_results, axis=1)
-    stddev3 = np.std(empnn_results, axis=1)
+    mean3 = np.median(empnn_results, axis=1)
+    min3 = np.min(empnn_results, axis=1)
+    max3 = np.max(empnn_results, axis=1)
 
     plt.figure(figsize=(6, 4))
 
-    # Plot each list with error bars
-    plt.errorbar(x_ticks, mean1, yerr=stddev1, label='GCNN', fmt='-o', capsize=5, color="red")
-    plt.errorbar(x_ticks, mean2, yerr=stddev2, label='GTransformer', fmt='-s', capsize=5, color="blue")
-    plt.errorbar(x_ticks, mean3, yerr=stddev3, label='EMPNN', fmt='-^', capsize=5, color="green")
+    # Set the positions and width for the bars
+    x = np.arange(len(x_ticks))  # The label locations
+    width = 0.25  # The width of the bars
+
+    # Create the figure and axis
+    fig, ax = plt.subplots()
+
+    # Plotting the bars for each class with error bars
+    bars1 = ax.bar(x - width, mean1, width, yerr=[mean1 - min1, max1 - mean1], label='GCNN', capsize=5, color="red")
+    bars2 = ax.bar(x, mean2, width, yerr=[mean2 - min2, max2 - mean2], label='GTransformer', capsize=5, color="blue")
+    bars3 = ax.bar(x + width, mean3, width, yerr=[mean3 - min3, max3 - mean3], label='EMPNN', capsize=5, color="green")
 
     # Add labels and title
-    plt.xlabel(x_label)
-    plt.xticks(x_ticks)
-    plt.ylabel(y_label)
-    plt.title(title)
-    plt.legend()
+    ax.set_xlabel(x_label)
+    ax.set_xticks(x)
+    ax.set_xticklabels(x_ticks)
+    ax.set_ylabel(y_label)
+    ax.set_title(title)
+    ax.legend()
 
     # Show the plot
     plt.savefig(save_loc)
