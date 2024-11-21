@@ -4,17 +4,11 @@ import matplotlib.pyplot as plt
 
 
 def make_graph(gcnn_results, gtransformer_results, empnn_results, x_ticks, x_label, y_label, title, save_loc):
-    mean1 = np.median(gcnn_results, axis=1)
-    min1 = np.min(gcnn_results, axis=1)
-    max1 = np.max(gcnn_results, axis=1)
+    mean1 = np.mean(gcnn_results, axis=1)
 
-    mean2 = np.median(gtransformer_results, axis=1)
-    min2 = np.min(gtransformer_results, axis=1)
-    max2 = np.max(gtransformer_results, axis=1)
+    mean2 = np.mean(gtransformer_results, axis=1)
 
-    mean3 = np.median(empnn_results, axis=1)
-    min3 = np.min(empnn_results, axis=1)
-    max3 = np.max(empnn_results, axis=1)
+    mean3 = np.mean(empnn_results, axis=1)
 
     plt.figure(figsize=(6, 4))
 
@@ -26,9 +20,9 @@ def make_graph(gcnn_results, gtransformer_results, empnn_results, x_ticks, x_lab
     fig, ax = plt.subplots()
 
     # Plotting the bars for each class with error bars
-    bars1 = ax.bar(x - width, mean1, width, yerr=[mean1 - min1, max1 - mean1], label='GCNN', capsize=5, color="red")
-    bars2 = ax.bar(x, mean2, width, yerr=[mean2 - min2, max2 - mean2], label='GTransformer', capsize=5, color="blue")
-    bars3 = ax.bar(x + width, mean3, width, yerr=[mean3 - min3, max3 - mean3], label='EMPNN', capsize=5, color="green")
+    bars1 = ax.bar(x - width, mean1, width, label='GCNN', capsize=5, color="red")
+    bars2 = ax.bar(x, mean2, width, label='GTransformer', capsize=5, color="blue")
+    bars3 = ax.bar(x + width, mean3, width, label='EMPNN', capsize=5, color="green")
 
     # Add labels and title
     ax.set_xlabel(x_label)
@@ -87,8 +81,8 @@ def main():
     empnn_size_steps = get_results_starting_with("SizeWorld", size_ticks, empnn_results, "steps")
     empnn_size_collisions = get_results_starting_with("SizeWorld", size_ticks, empnn_results, "collisions")
 
-    make_graph(gcnn_equiv_steps, gtransformer_equiv_steps, empnn_equiv_steps, equiv_ticks, "Angle", "Steps", "Comparison Between Rotated Worlds", "equiv_steps.pdf")
-    make_graph(gcnn_equiv_collisions, gtransformer_equiv_collisions, empnn_equiv_collisions, equiv_ticks, "Angle", "Collisions", "Comparison Between Rotated Worlds", "equiv_collisions.pdf")
+    make_graph(gcnn_equiv_steps, gtransformer_equiv_steps, empnn_equiv_steps, equiv_ticks, "Angle", "Steps", "Comparison Between Worlds of Differing Orientation", "equiv_steps.pdf")
+    make_graph(gcnn_equiv_collisions, gtransformer_equiv_collisions, empnn_equiv_collisions, equiv_ticks, "Angle", "Collisions", "Comparison Between Worlds of Differing Orientation", "equiv_collisions.pdf")
     make_graph(gcnn_random_steps, gtransformer_random_steps, empnn_random_steps, random_ticks, "Number of Entities", "Steps", "Comparison Between Worlds with Differing Number of Entities", "random_steps.pdf")
     make_graph(gcnn_random_collisions, gtransformer_random_collisions, empnn_random_collisions, random_ticks, "Number of Entities", "Collisions", "Comparison Between Worlds with Differing Number of Entities", "random_collisions.pdf")
     make_graph(gcnn_size_steps, gtransformer_size_steps, empnn_size_steps, size_ticks, "Size", "Steps", "Comparison Between Worlds of Different Sizes", "size_steps.pdf")
