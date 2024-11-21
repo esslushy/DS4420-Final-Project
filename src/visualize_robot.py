@@ -36,15 +36,23 @@ def draw_world(frame, world: World, model, ax):
     ax.add_patch(plt.Circle((world.goal.position.x, world.goal.position.y), world.goal.radius, color="green"))
     world.update_entities_velocity()
 
-def main(world: World, model):
+def main(world: World, steps: int, save: Path, model):
     fig, ax = plt.subplots(figsize=(8,8), tight_layout=True)
-    ani = animation.FuncAnimation(fig, partial(draw_world, world=world, model=model, ax=ax), 10000, interval=20, repeat=True)
-    plt.show()
+    ani = animation.FuncAnimation(fig, partial(draw_world, world=world, model=model, ax=ax), steps, interval=20, repeat=True)
+    if save:
+        writer = animation.PillowWriter(fps=20,
+                                        metadata=dict(artist='Me'),
+                                        bitrate=1800)
+        ani.save(save, writer=writer)
+    else:
+        plt.show()
 
 if __name__ == "__main__":
     args = ArgumentParser()
     args.add_argument("model", help="Directory of the model to use", type=Path)
     args.add_argument("world", help="Path to the world")
+    args.add_argument("--save", help="The path to save the file to.", type=Path)
+    args.add_argument("--steps", type=int, help="The number of steps to simulate the world", default=10000)
     args = args.parse_args()
     m = load_module("custom_env", args.world)
 
@@ -61,4 +69,4 @@ if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model.load_state_dict(torch.load(args.model.joinpath("actor.model"), map_location=device, weights_only=True))
 
-    main(m.world, model)
+    main(m.world, args.steps, args.save, model)
