@@ -2,7 +2,17 @@ import torch
 from torch import nn
 
 class EquivariantUpdateLayer(nn.Module):
-    def __init__(self, h_dim, epsilon: float = 1e-8):
+    """
+    The layer that performs the updates for the equivariant message passing layer.
+    """
+    def __init__(self, h_dim: int, epsilon: float = 1e-8):
+        """
+        Initializes an equivariant update layer.
+
+        Args:
+            h_dim: The hidden dimension of the layer.
+            epsilon: Epsilon to use to avoid division by 0.
+        """
         super().__init__()
         self.h_dim = h_dim
         self.epsilon = epsilon

@@ -6,7 +6,20 @@ from torch_geometric.data import Data
 from ProjectParameters import SUCCESS_REWARD, TIME_SCALE, DISTANCE_SCALE, COLLISION_SCALE, SPEED_SCALE, WALL_PENALTY
 
 class World():
+    """
+    A world that contains the robot and entities.
+    """
     def __init__(self, width: int, height: int, goal: Entity, robot: Robot, entities: List[Entity]) -> None:
+        """
+        Initializes a world
+
+        Args:
+            width: The width of the world
+            height: The height of the world
+            goal: The goal entity for the robot to get to.
+            robot: The robot in the world
+            entities: A list of entities in the world.
+        """
         self.width = width
         self.height = height
         self.goal = goal
@@ -16,6 +29,9 @@ class World():
         self.hit_wall = False
 
     def update_entities_position(self):
+        """
+        Updates the position of all entities.
+        """
         for entity in self.entities:
             entity.update_position(self.width, self.height)
 
@@ -38,13 +54,18 @@ class World():
             self.hit_wall = False
     
     def update_entities_velocity(self):
-        # Run update velocity for each entity based on collisions
+        """
+        Run update velocity for each entity
+        """
         for e in self.entities:
             e.update_velocity(self.width, self.height)
 
     def compute_reward(self, step: int):
         """
         Computes the reward for the robot at the current time step
+
+        Args:
+            step: The current time step (for slow penalty)
         """    
         if self.robot_reached_goal():
             return SUCCESS_REWARD - (step * TIME_SCALE) - (self.robot.num_collisions * COLLISION_SCALE)
@@ -111,4 +132,7 @@ class World():
         self.robot.reset()
 
     def robot_reached_goal(self) -> bool:
+        """
+        Checks if the robot has reached the goal.
+        """
         return self.robot.collided_with(self.goal)

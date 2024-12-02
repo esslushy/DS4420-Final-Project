@@ -6,7 +6,17 @@ class GoalEntity(Entity):
     """
     Represents an entity that goes between goals
     """
-    def __init__(self, radius, speed, goals: List[Vector2D]):
+    def __init__(self, radius: float, speed: float, goals: List[Vector2D]):
+        """
+        Initializes a new entity at the given position with the given velocity and radius.
+        Entity oscillates between each goal.
+
+        Args:
+            radius: The radius of the entity.
+            position: The initial position of the entity.
+            velocity: The velocity of the entity.
+            goals: The goals for the entity to traverse
+        """
         self.speed = speed
         self.current_goal = 1
         self.goals = goals

@@ -3,7 +3,19 @@ from Model.Layers import EquivariantMessageLayer, EquivariantUpdateLayer, GatedE
 import torch
 
 class EMPNNModel(nn.Module):
-    def __init__(self, outputs: list, h_dim=128, num_interation_layers=4, num_fully_connected_layers=6) -> None:
+    """
+    An equivariant message passing graph neural network
+    """
+    def __init__(self, outputs: list, h_dim: int = 128, num_interation_layers: int = 4, num_fully_connected_layers: int = 6) -> None:
+        """
+        Initializes a EMPNN model.
+
+        Args:
+            outputs: A list of all outputs for the model.
+            h_dim: The hidden dimensionality of the model.
+            num_interaction_layers: The number of graph interaction layers.
+            num_fully_connected_layers: The number of feed forward layers.
+        """
         super().__init__()
         
         self.h_dim = h_dim

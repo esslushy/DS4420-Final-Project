@@ -6,7 +6,15 @@ class WanderEntity(Entity):
     """
     Represents an entity that wanders around the map
     """
-    def __init__(self, radius, position, speed):
+    def __init__(self, radius: float, position: Vector2D, speed: float):
+        """
+        Initializes a new entity at the given position with the given velocity and radius.
+
+        Args:
+            radius: The radius of the entity.
+            position: The initial position of the entity.
+            speed: The speed of the entity.
+        """
         super().__init__(radius, position, Vector2D(0, 0))
         self.goal = position
         self.speed = speed

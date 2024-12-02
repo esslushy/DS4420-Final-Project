@@ -2,7 +2,7 @@ import torch
 from torch import nn
 
 class GatedEquivariantBlock(nn.Module):
-    def __init__(self, v_in, s_in, v_out, s_out, h_dim, epsilon=1e-8) -> None:
+    def __init__(self, v_in: int, s_in: int, v_out: int, s_out: int, h_dim: int, epsilon=1e-8) -> None:
         """
           Initializes a gated equivariant block. Used for equivariant transform of feature vectors
 
@@ -12,6 +12,7 @@ class GatedEquivariantBlock(nn.Module):
             v_out: The output features for the vector outputs
             s_out: The output features for the scalar output
             h_dim: The number of nodes in the hidden layer in the scalar vector mixing layer.
+            epsilon: Use to prevent division by 0.
         """
         super().__init__()
         self.epsilon = epsilon

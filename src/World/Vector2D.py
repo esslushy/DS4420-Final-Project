@@ -16,6 +16,10 @@ class Vector2D():
     def from_magnitude_direction(magnitude: float, direction: float):
         """
         Makes a Vector2D from magnitude and direction.
+
+        Args:
+            magnitude: The l2 magnitude of the new vector
+            direction: The direction of the new vector in radians.
         """
         return Vector2D(magnitude * math.cos(direction), magnitude * math.sin(direction))
 

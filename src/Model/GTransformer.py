@@ -6,7 +6,19 @@ class GTransformerModel(nn.Module):
     """
     Represents a graph transformer network
     """
-    def __init__(self, outputs: list, node_dim=64, edge_dim=32, num_conv_layers=4, h_dim=128, num_fully_connected_layers=6) -> None:
+    def __init__(self, outputs: list, node_dim: int = 64, edge_dim: int = 32, num_conv_layers: int = 4,
+                  h_dim: int = 128, num_fully_connected_layers: int = 6) -> None:
+        """
+        Initializes a GTransformer model.
+
+        Args:
+            outputs: A list of all outputs for the model.
+            node_dim: The node embedding dim.
+            edge_dim: The edge embedding dim.
+            num_conv_layers: The number of graph interaction layers.
+            h_dim: The hidden dimensionality of the model.
+            num_fully_connected_layers: The number of feed forward layers.
+        """
         super().__init__()
         self.node_dim = node_dim
         self.edge_dim = edge_dim

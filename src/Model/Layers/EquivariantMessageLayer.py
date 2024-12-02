@@ -3,12 +3,15 @@ from torch import nn
 from torch_scatter import scatter
 
 class EquivariantMessageLayer(nn.Module):
-    def __init__(self, h_dim):
+    """
+    The layer that generates the messages for an equivariant message passing layer.
+    """
+    def __init__(self, h_dim: int):
         """
-          Initializes an equivariant message passing layer
+          Initializes an equivariant message passing layer.
 
           Args:
-            h_dim: The hidden dimension used in the model. Same as embedding dim
+            h_dim: The hidden dimension used in the model. Same as embedding dim.
         """
         super().__init__()
 
