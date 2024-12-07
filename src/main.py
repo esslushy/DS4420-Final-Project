@@ -134,7 +134,7 @@ def main(world_pth: Path, config: dict, output_dir: Path, from_existing: Path):
         actor_scheduler.step()
         critic_scheduler.step()
     # Save results
-    output_dir.mkdir(exist_ok=True)
+    output_dir.mkdir(exist_ok=True, parents=True)
     config["training_world"] = str(world_pth)
     with output_dir.joinpath("config.json").open("wt+") as f:
         json.dump(config, f, indent=2)
